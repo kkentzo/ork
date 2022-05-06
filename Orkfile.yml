@@ -1,5 +1,6 @@
 global:
   default: build
+  shell: /bin/bash
   env:
     GO_BUILD: go build
     GO_TARGET: bin/ork

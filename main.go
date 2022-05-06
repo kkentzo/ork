@@ -2,27 +2,27 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 )
 
 func main() {
-	cfg, err := ParseOrkfile("Orkfile.yml")
+	logger, err := NewLogger()
 	if err != nil {
-		log.Fatalf("failed to parse Orkfile: %v", err)
+		fmt.Println("failed to initialize logger")
+		os.Exit(1)
 	}
 
-	registry := NewTaskRegistry(cfg)
-
-	task := cfg.Global.Default
-	if len(os.Args) == 2 {
-		task = os.Args[1]
+	// read Orkfile contents
+	contents, err := Read(DEFAULT_ORKFILE)
+	if err != nil {
+		logger.Fatalf("failed to find Orkfile: %v", err)
 	}
-	if t, ok := registry[task]; ok {
-		if err := t.Execute(); err != nil {
-			fmt.Printf("[%s] error: %v\n", t.Name, err)
-		}
-	} else {
-		fmt.Printf("[%s] task not found in Orkfile\n", task)
+	orkfile := New(logger)
+	if err := orkfile.Parse(contents); err != nil {
+		logger.Fatalf("failed to parse Orkfile: %v", err)
+	}
+
+	if err := orkfile.Execute(os.Args[1]); err != nil {
+		logger.Fatal(err.Error())
 	}
 }

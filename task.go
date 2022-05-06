@@ -6,34 +6,58 @@ import (
 	"os/exec"
 )
 
-type TaskRegistry map[string]*Task
-
-func NewTaskRegistry(f *Orkfile) TaskRegistry {
-	r := TaskRegistry{}
-	shell := pathToShell()
-	for _, t := range f.Tasks {
-		t.global = f.Global
-		t.envvars = mergeEnv(f.Global.Env, t.Env)
-		t.shell = shell
-		r[t.Name] = t
-	}
-	return r
-}
-
 type Task struct {
-	Name      string            `yaml:"name"`
-	Env       map[string]string `yaml:"env"`
-	Actions   []string          `yaml:"actions"`
-	DependsOn []string          `yaml:"depends_on"`
-	global    *Global
-	envvars   []string
-	shell     string
+	name    string
+	actions []string
+	env     []string
+	shell   string
+	deps    []*Task
+	logger  Logger
 }
 
+func NewTask(name string, actions []string, shell string, env []string, logger Logger) *Task {
+	return &Task{name: name, actions: actions, shell: shell, env: env, logger: logger}
+}
+
+// add another task as a dependency to this task
+func (t *Task) AddDependency(other *Task) {
+	t.logger.Debugf("adding %s as a dependency of task %s", other.name, t.name)
+	t.deps = append(t.deps, other)
+}
+
+// execute the task
 func (t *Task) Execute() error {
-	for _, action := range t.Actions {
-		fmt.Printf("[%s] %s", t.Name, action)
-		if _, err := execute(t.shell, action, t.envvars); err != nil {
+	return t.execute(map[string]struct{}{})
+}
+
+func (t *Task) execute(cdt map[string]struct{}) error {
+	// mark task as visited
+	cdt[t.name] = struct{}{}
+
+	// first, execute all dependencies
+	for _, dep := range t.deps {
+		// should we visit the dependency?
+		if _, ok := cdt[dep.name]; ok {
+			return fmt.Errorf("cyclic dependency detected: %s->%s", t.name, dep.name)
+		}
+		if err := dep.execute(cdt); err != nil {
+			return err
+		}
+	}
+	// execute task
+	return t.executeActions()
+}
+
+// execute the task's actions
+// stop execution in case of an error in an action
+// return the first encountered error (if any)
+func (t *Task) executeActions() error {
+	// execute the present task
+	for _, action := range t.actions {
+		t.logger.Infof("[%s] %s", t.name, action)
+		out, err := execute(t.shell, action, t.env)
+		t.logger.Output(out)
+		if err != nil {
 			return err
 		}
 	}
@@ -56,24 +80,4 @@ func execute(shell string, statement string, env []string) (string, error) {
 		return string(out), err
 	}
 	return string(out), nil
-}
-
-func pathToShell() string {
-	if shell := os.Getenv("SHELL"); shell != "" {
-		return shell
-	}
-	return "/bin/bash"
-}
-
-// will merge the local envs into the global ones and return as a list of "KEY=VAL" items
-// no de-duplication happens
-func mergeEnv(global, local map[string]string) []string {
-	env := []string{}
-	for k, v := range global {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
-	}
-	for k, v := range local {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
-	}
-	return env
 }
