@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Orkfile_Execute_NoGlobalSection(t *testing.T) {
+func Test_Orkfile_NoGlobalSection(t *testing.T) {
 	yml := `
 tasks:
   - name: foo
@@ -17,21 +17,18 @@ tasks:
 	log := NewMockLogger()
 	f := New(log)
 	assert.NoError(t, f.Parse([]byte(yml)))
-	assert.NoError(t, f.Execute("foo"))
+	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo foo")
 }
 
-func Test_Execute_EmptyOrkfile(t *testing.T) {
+func Test_EmptyOrkfile(t *testing.T) {
 	yml := ``
 	log := NewMockLogger()
 	f := New(log)
 	assert.NoError(t, f.Parse([]byte(yml)))
-	err := f.ExecuteDefault()
-	assert.Error(t, err)
-	assert.ErrorContains(t, err, "No default task found in the global section")
 }
 
-func Test_Execute_DefaultTask(t *testing.T) {
+func Test_DefaultTask(t *testing.T) {
 	yml := `
 global:
   default: foo
@@ -44,11 +41,11 @@ tasks:
 	log := NewMockLogger()
 	f := New(log)
 	assert.NoError(t, f.Parse([]byte(yml)))
-	assert.NoError(t, f.ExecuteDefault())
+	assert.NoError(t, f.DefaultTask().Execute())
 	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo foo")
 }
 
-func Test_Orkfile_Execute_PrintsCommandOutput(t *testing.T) {
+func Test_Orkfile_PrintsCommandOutput(t *testing.T) {
 	yml := `
 global:
   default: foo
@@ -61,12 +58,12 @@ tasks:
 	log := NewMockLogger()
 	f := New(log)
 	assert.NoError(t, f.Parse([]byte(yml)))
-	assert.NoError(t, f.Execute("foo"))
+	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo foo")
 	assert.Contains(t, log.Outputs(), "foo\n")
 }
 
-func Test_Orkfile_Execute_PreventsCyclicDependencyDetection(t *testing.T) {
+func Test_Orkfile_PreventsCyclicDependencyDetection(t *testing.T) {
 	yml := `
 tasks:
   - name: foo
@@ -84,11 +81,11 @@ tasks:
 	log := NewMockLogger()
 	f := New(log)
 	assert.NoError(t, f.Parse([]byte(yml)))
-	err := f.Execute("foo")
+	err := f.Task("foo").Execute()
 	assert.ErrorContains(t, err, "cyclic dependency")
 }
 
-func Test_Orkfile_Execute_UsesGlobalEnv(t *testing.T) {
+func Test_Orkfile_UsesGlobalEnv(t *testing.T) {
 	yml := `
 global:
   env:
@@ -101,11 +98,11 @@ tasks:
 	log := NewMockLogger()
 	f := New(log)
 	assert.NoError(t, f.Parse([]byte(yml)))
-	assert.NoError(t, f.Execute("foo"))
+	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Outputs(), "foo\n")
 }
 
-func Test_Orkfile_Execute_UsesLocalEnv(t *testing.T) {
+func Test_Orkfile_UsesLocalEnv(t *testing.T) {
 	yml := `
 tasks:
   - name: foo
@@ -117,11 +114,11 @@ tasks:
 	log := NewMockLogger()
 	f := New(log)
 	assert.NoError(t, f.Parse([]byte(yml)))
-	assert.NoError(t, f.Execute("foo"))
+	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Outputs(), "foo\n")
 }
 
-func Test_Orkfile_Execute_LocalEnv_Overrides_GlobalEnv(t *testing.T) {
+func Test_Orkfile_LocalEnv_Overrides_GlobalEnv(t *testing.T) {
 	yml := `
 global:
   env:
@@ -136,7 +133,7 @@ tasks:
 	log := NewMockLogger()
 	f := New(log)
 	assert.NoError(t, f.Parse([]byte(yml)))
-	assert.NoError(t, f.Execute("foo"))
+	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Outputs(), "bar\n")
 
 }

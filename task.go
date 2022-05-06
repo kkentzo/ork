@@ -7,16 +7,27 @@ import (
 )
 
 type Task struct {
-	name    string
-	actions []string
-	env     []string
-	shell   string
-	deps    []*Task
-	logger  Logger
+	name        string
+	description string
+	actions     []string
+	env         []string
+	shell       string
+	deps        []*Task
+	logger      Logger
 }
 
 func NewTask(name string, actions []string, shell string, env []string, logger Logger) *Task {
 	return &Task{name: name, actions: actions, shell: shell, env: env, logger: logger}
+}
+
+func (t *Task) Info() string {
+	var desc string
+	if t.description == "" {
+		desc = "<no description>"
+	} else {
+		desc = t.description
+	}
+	return fmt.Sprintf("%s: %s", t.name, desc)
 }
 
 // add another task as a dependency to this task

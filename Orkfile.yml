@@ -8,6 +8,7 @@ global:
 tasks:
 
   - name: build
+    description: build the application
     env:
       GOOS: linux
       GOARCH: amd64
@@ -15,10 +16,11 @@ tasks:
       - ${GO_BUILD} -o ${GO_TARGET}
 
   - name: test
+    description: test the application
     depends_on:
       - build
     actions:
-      - go test ./...
+      - go test . -v -count=1
 
   - name: clean
     actions:

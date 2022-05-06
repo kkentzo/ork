@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -11,7 +10,7 @@ import (
 
 const (
 	DEFAULT_SHELL   = "/bin/bash"
-	DEFAULT_ORKFILE = "Orkfile.yml"
+	DEFAULT_ORKFILE = "./Orkfile.yml"
 )
 
 type Global struct {
@@ -21,10 +20,22 @@ type Global struct {
 }
 
 type OrkfileTask struct {
-	Name      string            `yaml:"name"`
-	Env       map[string]string `yaml:"env"`
-	Actions   []string          `yaml:"actions"`
-	DependsOn []string          `yaml:"depends_on"`
+	Name        string            `yaml:"name"`
+	Description string            `yaml:"description"`
+	Env         map[string]string `yaml:"env"`
+	Actions     []string          `yaml:"actions"`
+	DependsOn   []string          `yaml:"depends_on"`
+}
+
+func (ot OrkfileTask) ToTask(shell string, env []string, logger Logger) *Task {
+	return &Task{
+		name:        ot.Name,
+		description: ot.Description,
+		actions:     ot.Actions,
+		shell:       shell,
+		env:         env,
+		logger:      logger,
+	}
 }
 
 type Orkfile struct {
@@ -63,7 +74,7 @@ func (f *Orkfile) Parse(contents []byte) error {
 	}
 	// create all tasks
 	for _, t := range f.Tasks {
-		f.tasks[t.Name] = NewTask(t.Name, t.Actions, f.Global.Shell, mergeEnv(f.Global.Env, t.Env), f.logger)
+		f.tasks[t.Name] = t.ToTask(f.Global.Shell, mergeEnv(f.Global.Env, t.Env), f.logger)
 	}
 	// create task dependencies
 	for _, t := range f.Tasks {
@@ -79,20 +90,22 @@ func (f *Orkfile) Parse(contents []byte) error {
 	return nil
 }
 
-func (f *Orkfile) Execute(lbl string) error {
-	if task, ok := f.tasks[lbl]; ok {
-		return task.Execute()
-
+func (f *Orkfile) AllTasks() []*Task {
+	tasks := make([]*Task, 0, len(f.tasks))
+	for _, task := range f.tasks {
+		tasks = append(tasks, task)
 	}
-	return fmt.Errorf("task %s does not exist", lbl)
+	return tasks
 }
 
-// execute the default task (if it exists)
-func (f *Orkfile) ExecuteDefault() error {
-	if f.Global.Default == "" {
-		return errors.New("No default task found in the global section")
-	}
-	return f.Execute(f.Global.Default)
+// return the task corresponding to label or nil if it does not exist
+func (f *Orkfile) Task(label string) *Task {
+	return f.tasks[label]
+}
+
+// return the default task or nil if it does not exist
+func (f *Orkfile) DefaultTask() *Task {
+	return f.tasks[f.Global.Default]
 }
 
 // will merge the local envs into the global ones and return as a list of "KEY=VAL" items
