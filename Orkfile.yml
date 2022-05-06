@@ -1,0 +1,24 @@
+global:
+  default: build
+  env:
+    GO_BUILD: go build
+    GO_TARGET: bin/ork
+
+tasks:
+
+  - name: build
+    env:
+      GOOS: linux
+      GOARCH: amd64
+    actions:
+      - ${GO_BUILD} -o ${GO_TARGET}
+
+  - name: test
+    depends_on:
+      - build
+    actions:
+      - go test ./...
+
+  - name: clean
+    actions:
+      - rm -rf bin
