@@ -54,6 +54,23 @@ func main() {
 			&cli.StringFlag{Name: "path", Aliases: []string{"p"}, Usage: "path to Orkfile", Value: DEFAULT_ORKFILE},
 			&cli.BoolFlag{Name: "info", Aliases: []string{"i"}, Usage: "show info for the supplied task or all tasks"},
 		},
+		EnableBashCompletion: true,
+		BashComplete: func(c *cli.Context) {
+			// read Orkfile contents
+			contents, err := Read(DEFAULT_ORKFILE)
+			if err != nil {
+				return
+			}
+			// parse file
+			orkfile := New()
+			if err := orkfile.Parse(contents, logger); err != nil {
+				return
+			}
+			// return the available task to `complete` command
+			for _, t := range orkfile.Tasks {
+				fmt.Println(t.Name)
+			}
+		},
 		Action: func(c *cli.Context) error {
 			// read Orkfile contents
 			contents, err := Read(c.String("path"))
