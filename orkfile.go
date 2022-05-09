@@ -42,8 +42,7 @@ type Orkfile struct {
 	Global Global        `yaml:"global"`
 	Tasks  []OrkfileTask `yaml:"tasks"`
 
-	path   string
-	logger Logger
+	path string
 
 	tasks map[string]*Task
 }
@@ -56,13 +55,11 @@ func Read(path string) (contents []byte, err error) {
 	return
 }
 
-func New(logger Logger) *Orkfile {
-	return &Orkfile{
-		logger: logger,
-	}
+func New() *Orkfile {
+	return &Orkfile{}
 }
 
-func (f *Orkfile) Parse(contents []byte) error {
+func (f *Orkfile) Parse(contents []byte, logger Logger) error {
 	f.tasks = map[string]*Task{}
 
 	if err := yaml.Unmarshal(contents, f); err != nil {
@@ -74,7 +71,7 @@ func (f *Orkfile) Parse(contents []byte) error {
 	}
 	// create all tasks
 	for _, t := range f.Tasks {
-		f.tasks[t.Name] = t.ToTask(f.Global.Shell, mergeEnv(f.Global.Env, t.Env), f.logger)
+		f.tasks[t.Name] = t.ToTask(f.Global.Shell, mergeEnv(f.Global.Env, t.Env), logger)
 	}
 	// create task dependencies
 	for _, t := range f.Tasks {

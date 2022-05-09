@@ -15,8 +15,8 @@ tasks:
       - echo foo
 `
 	log := NewMockLogger()
-	f := New(log)
-	assert.NoError(t, f.Parse([]byte(yml)))
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
 	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo foo")
 }
@@ -24,8 +24,8 @@ tasks:
 func Test_EmptyOrkfile(t *testing.T) {
 	yml := ``
 	log := NewMockLogger()
-	f := New(log)
-	assert.NoError(t, f.Parse([]byte(yml)))
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
 }
 
 func Test_DefaultTask(t *testing.T) {
@@ -39,8 +39,8 @@ tasks:
 
 `
 	log := NewMockLogger()
-	f := New(log)
-	assert.NoError(t, f.Parse([]byte(yml)))
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
 	assert.NoError(t, f.DefaultTask().Execute())
 	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo foo")
 }
@@ -56,8 +56,8 @@ tasks:
 
 `
 	log := NewMockLogger()
-	f := New(log)
-	assert.NoError(t, f.Parse([]byte(yml)))
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
 	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo foo")
 	assert.Contains(t, log.Outputs(), "foo\n")
@@ -79,8 +79,8 @@ tasks:
       - echo bar
 `
 	log := NewMockLogger()
-	f := New(log)
-	assert.NoError(t, f.Parse([]byte(yml)))
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
 	err := f.Task("foo").Execute()
 	assert.ErrorContains(t, err, "cyclic dependency")
 }
@@ -96,8 +96,8 @@ tasks:
       - echo ${GLOBAL_ENV}
 `
 	log := NewMockLogger()
-	f := New(log)
-	assert.NoError(t, f.Parse([]byte(yml)))
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
 	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Outputs(), "foo\n")
 }
@@ -112,8 +112,8 @@ tasks:
       - echo ${LOCAL_ENV}
 `
 	log := NewMockLogger()
-	f := New(log)
-	assert.NoError(t, f.Parse([]byte(yml)))
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
 	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Outputs(), "foo\n")
 }
@@ -131,8 +131,8 @@ tasks:
       - echo ${VARIABLE}
 `
 	log := NewMockLogger()
-	f := New(log)
-	assert.NoError(t, f.Parse([]byte(yml)))
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
 	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Outputs(), "bar\n")
 

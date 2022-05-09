@@ -60,9 +60,9 @@ func main() {
 			if err != nil {
 				logger.Fatalf("failed to find Orkfile: %v", err)
 			}
-			orkfile := New(logger)
-			if err := orkfile.Parse(contents); err != nil {
-				logger.Fatalf("failed to parse Orkfile: %v", err)
+			orkfile := New()
+			if err := orkfile.Parse(contents, logger); err != nil {
+				os.Exit(1)
 			}
 
 			if c.Bool("tasks") {
