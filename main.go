@@ -11,7 +11,7 @@ import (
 
 func prepareCli() {
 	cli.AppHelpTemplate = `NAME:
-   {{.Name}} - {{.Usage}}
+   {{.Name}} - {{.Description}}
 
 USAGE:
    {{.HelpName}} [OPTIONS] [TASK1 TASK2 ...]
