@@ -1,3 +1,5 @@
+[![test](https://github.com/kkentzo/ork/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/kkentzo/ork/actions/workflows/test.yml)
+
 # ork
 
 `ork` is a program to organize, compose and execute command workflows
