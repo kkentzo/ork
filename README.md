@@ -63,15 +63,17 @@ tasks:
 
 ## Installation & Usage
 
-TODO: release binaries
+`ork` can be installed by downloading the latest release binary from
+[here](https://github.com/kkentzo/ork/releases) and putting it in a
+convenient place in your `$PATH` (e.g. `/usr/local/bin`).
 
-Run `ork -h` for options.
+Run `ork -h` for program options.
 
 ## Autocompletion
 
-`ork` support task autocompletion in the command-line. Enabling
-auto-completion in the system comes as courtesy of the excellent
-[cli](https://github.com/urfave/cli) library:
+`ork` supports task autocompletion in the command-line. Follow the
+guides below to enable system-wide auto-completion (courtesy of the
+excellent [cli](https://github.com/urfave/cli) library):
 
 - [bash instructions](https://github.com/urfave/cli/blob/main/docs/v2/manual.md#distribution-and-persistent-autocompletion)
 - [zsh support](https://github.com/urfave/cli/blob/main/docs/v2/manual.md#zsh-support)
