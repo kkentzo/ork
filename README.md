@@ -1,4 +1,5 @@
 [![test](https://github.com/kkentzo/ork/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/kkentzo/ork/actions/workflows/test.yml)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/kkentzo/ork)
 
 # ork
 
