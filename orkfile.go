@@ -10,7 +10,7 @@ import (
 
 const (
 	DEFAULT_SHELL   = "/bin/bash"
-	DEFAULT_ORKFILE = "./Orkfile.yml"
+	DEFAULT_ORKFILE = "Orkfile.yml"
 )
 
 type Global struct {
