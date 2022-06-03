@@ -27,17 +27,6 @@ type OrkfileTask struct {
 	DependsOn   []string          `yaml:"depends_on"`
 }
 
-func (ot OrkfileTask) ToTask(shell string, env []string, logger Logger) *Task {
-	return &Task{
-		name:        ot.Name,
-		description: ot.Description,
-		actions:     ot.Actions,
-		shell:       shell,
-		env:         env,
-		logger:      logger,
-	}
-}
-
 type Orkfile struct {
 	Global Global        `yaml:"global"`
 	Tasks  []OrkfileTask `yaml:"tasks"`
@@ -71,7 +60,7 @@ func (f *Orkfile) Parse(contents []byte, logger Logger) error {
 	}
 	// create all tasks
 	for _, t := range f.Tasks {
-		f.tasks[t.Name] = t.ToTask(f.Global.Shell, mergeEnv(f.Global.Env, t.Env), logger)
+		f.tasks[t.Name] = NewTask(t, f.Global.Shell, mergeEnv(f.Global.Env, t.Env), logger)
 	}
 	// create task dependencies
 	for _, t := range f.Tasks {
@@ -105,17 +94,16 @@ func (f *Orkfile) DefaultTask() *Task {
 	return f.tasks[f.Global.Default]
 }
 
-// will merge the local envs into the global ones and return as a list of "KEY=VAL" items
-// no de-duplication happens
-func mergeEnv(global, local map[string]string) []string {
-	env := []string{}
-	for k, v := range global {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
+// will merge the local envs into the global env hash
+// locals will override globals
+func mergeEnv(global, local map[string]string) map[string]string {
+	if global == nil {
+		return local
 	}
 	for k, v := range local {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
+		global[k] = v
 	}
-	return env
+	return global
 }
 
 func pathToShell() string {

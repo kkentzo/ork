@@ -135,5 +135,20 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml), log))
 	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Outputs(), "bar\n")
+}
 
+func Test_Orkfile_Env_Does_CommandSubstitution(t *testing.T) {
+	yml := `
+tasks:
+  - name: foo
+    env:
+      BAR: $(echo bar)
+    actions:
+      - echo $BAR
+`
+	log := NewMockLogger()
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
+	assert.NoError(t, f.Task("foo").Execute())
+	assert.Contains(t, log.Outputs(), "bar\n")
 }

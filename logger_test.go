@@ -68,5 +68,5 @@ func (l *MockLogger) Debugf(msg string, a ...interface{}) {
 }
 
 func (l *MockLogger) Output(msg string) {
-	l.outputs = append(l.outputs, msg)
+	l.outputs = append(l.outputs, msg+"\n")
 }
