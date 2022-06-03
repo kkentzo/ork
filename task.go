@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 )
 
 type Task struct {
@@ -68,10 +69,15 @@ func (t *Task) execute(cdt map[string]struct{}) error {
 // stop execution in case of an error in an action
 // return the first encountered error (if any)
 func (t *Task) executeActions() error {
+	// setup the environment for the actions
+	for k, v := range t.env {
+		os.Setenv(k, v)
+	}
+
 	// execute all the actions
 	for idx, action := range t.actions {
-		t.logger.Infof("[%s] %s", t.name, t.actions[idx])
-		if err := Execute(t.shell, t.env, action, t.logger); err != nil {
+		t.logger.Infof("[%s] %s", t.name, os.ExpandEnv(t.actions[idx]))
+		if err := Execute(t.shell, action, t.logger); err != nil {
 			return err
 		}
 	}

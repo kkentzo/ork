@@ -151,4 +151,5 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml), log))
 	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Outputs(), "bar\n")
+	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo $(echo bar)")
 }

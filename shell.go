@@ -8,10 +8,9 @@ import (
 	"os/exec"
 )
 
-// spawn the supplied shell with the given environment
-// and stream the given statements to the shell process
+// spawn the supplied shell and stream the given statement to the shell process
 // capture and return the output per statement
-func Execute(shell string, env map[string]string, statement string, logger Logger) error {
+func Execute(shell string, statement string, logger Logger) error {
 	cmd := exec.Command(shell)
 
 	// connect to the command's I/O pipes
@@ -34,11 +33,6 @@ func Execute(shell string, env map[string]string, statement string, logger Logge
 	// spawn the command
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start the shell process: %v", err)
-	}
-
-	// setup the environment
-	for k, v := range env {
-		os.Setenv(k, v)
 	}
 
 	statement = statement + "\n"
