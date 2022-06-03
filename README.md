@@ -64,6 +64,19 @@ tasks:
       - rm -rf bin
 ```
 
+## Features
+
+In general, a task (such as `build`) is a list of actions that are
+executed in the context of an action-specific shell process.
+
+`ork` provides the following features:
+
+- self-documented tasks
+- task dependencies (with cyclic dependency detection)
+- custom shell specification
+- global environment variables (apply to all tasks)
+- local, task-specific environment variables (override globals)
+
 ## Installation & Usage
 
 `ork` can be installed by downloading the latest release binary from
