@@ -79,6 +79,7 @@ func main() {
 			}
 			orkfile := New()
 			if err := orkfile.Parse(contents, logger); err != nil {
+				logger.Fatalf("failed to parse Orkfile: %v", err)
 				os.Exit(1)
 			}
 
