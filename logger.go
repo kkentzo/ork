@@ -37,5 +37,5 @@ func NewLogger() (Logger, error) {
 }
 
 func (l *OrkLogger) Output(message string) {
-	fmt.Println(message)
+	fmt.Print(message)
 }

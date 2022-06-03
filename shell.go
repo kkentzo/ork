@@ -52,9 +52,24 @@ func Execute(shell string, statement string, logger Logger) error {
 
 func captureAndLogOutput(stdout io.ReadCloser, logger Logger, captureErr chan error) {
 	// start reading from stdout
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		logger.Output(scanner.Text())
+	var (
+		n   int
+		err error
+	)
+	buf := make([]byte, 256)
+	reader := bufio.NewReader(stdout)
+	for {
+		n, err = reader.Read(buf)
+		if n > 0 {
+			logger.Output(string(buf[:n]))
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			captureErr <- err
+			return
+		}
 	}
-	captureErr <- scanner.Err()
+	captureErr <- nil
 }
