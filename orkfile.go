@@ -60,6 +60,9 @@ func (f *Orkfile) Parse(contents []byte, logger Logger) error {
 	}
 	// create all tasks
 	for _, t := range f.Tasks {
+		if _, ok := f.tasks[t.Name]; ok {
+			return fmt.Errorf("duplicate task: %s", t.Name)
+		}
 		f.tasks[t.Name] = NewTask(t, f.Global.Shell, mergeEnv(f.Global.Env, t.Env), logger)
 	}
 	// create task dependencies

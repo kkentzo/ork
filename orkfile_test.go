@@ -153,3 +153,19 @@ tasks:
 	assert.Contains(t, log.Outputs(), "bar\n")
 	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo $(echo bar)")
 }
+
+func Test_Orkfile_Parse_Fails_When_TwoTasks_Exist_WithTheSameName(t *testing.T) {
+	yml := `
+tasks:
+  - name: foo
+    actions:
+      - echo foo1
+  - name: foo
+    actions:
+      - echo foo2
+`
+	log := NewMockLogger()
+	f := New()
+	assert.ErrorContains(t, f.Parse([]byte(yml), log), "duplicate task")
+
+}
