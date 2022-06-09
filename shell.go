@@ -11,10 +11,15 @@ import (
 
 // spawn the supplied shell and stream the given statement to the shell process
 // capture and return the output per statement
-func Execute(shell string, statement string, logger Logger) error {
+func Execute(shell string, statement string, env map[string]string, logger Logger, stdin io.Reader) error {
+	// setup the environment
+	for k, v := range env {
+		os.Setenv(k, v)
+	}
+
 	cmd := exec.Command(shell, "-c", os.ExpandEnv(statement))
 	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
+	cmd.Stdin = stdin
 
 	var (
 		stdout io.ReadCloser
@@ -71,5 +76,5 @@ func captureAndLogOutput(stdout io.ReadCloser, logger Logger, captureErr chan er
 			}
 		}
 	}
-	captureErr <- nil
+	close(captureErr)
 }
