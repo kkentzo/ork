@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 )
 
 type Task struct {
@@ -72,7 +71,8 @@ func (t *Task) executeActions() error {
 	// execute all the actions
 	for idx, action := range t.actions {
 		t.logger.Infof("[%s] %s", t.name, t.actions[idx])
-		if err := Execute(t.shell, action, t.env, t.logger, os.Stdin); err != nil {
+		sh := NewShell(t.shell).WithEnv(t.env).WithLogger(t.logger)
+		if err := sh.Execute(action); err != nil {
 			return err
 		}
 	}

@@ -1,8 +1,8 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,7 +27,8 @@ func Test_Bash_Shell_Execute(t *testing.T) {
 
 	for idx, kase := range kases {
 		logger := NewMockLogger()
-		assert.NoError(t, Execute(kase.shell, kase.statement, kase.env, logger, nil), fmt.Sprintf("test case: %d", idx))
+		sh := NewShell(kase.shell).WithEnv(kase.env).WithLogger(logger)
+		assert.NoError(t, sh.Execute(kase.statement), fmt.Sprintf("test case: %d", idx))
 		assert.Contains(t, logger.Outputs(), kase.output, fmt.Sprintf("test case: %d", idx))
 	}
 }
@@ -37,18 +38,28 @@ func Test_Bash_Shell_Execute_Errors(t *testing.T) {
 		shell     string
 		statement string
 		env       map[string]string
-		stdin     io.Reader
 		errmsg    string
 		output    string
 	}{
 		// command prints error
-		{"/bin/bash", "echo foo; exit 1", map[string]string{}, nil, "exit status 1", "foo\n"},
+		{"/bin/bash", "echo foo; exit 1", map[string]string{}, "exit status 1", "foo\n"},
 	}
 
 	for _, kase := range kases {
 		logger := NewMockLogger()
-		err := Execute(kase.shell, kase.statement, kase.env, logger, kase.stdin)
-		assert.ErrorContains(t, err, kase.errmsg)
+		sh := NewShell(kase.shell).WithEnv(kase.env).WithLogger(logger)
+		assert.ErrorContains(t, sh.Execute(kase.statement), kase.errmsg)
 		assert.Contains(t, logger.Outputs(), kase.output)
 	}
+}
+
+func Test_Shell_Stamenent_Can_Accept_StandardInput(t *testing.T) {
+	logger := NewMockLogger()
+	b := bytes.NewBufferString("hello\n")
+	sh := NewShell("/bin/bash").WithLogger(logger).WithStdin(b)
+	// we need to disable env expansion in statement so that `$s` is not replaced
+	// with empty space (`$s` will be set during command execution, not before)
+	sh.SetExpandEnv(false)
+	assert.NoError(t, sh.Execute("read s && echo $s"))
+	assert.Contains(t, logger.Outputs(), "hello\n")
 }
