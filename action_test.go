@@ -19,9 +19,13 @@ func Test_Action_Execute(t *testing.T) {
 		// action prints output
 		{"echo foo\n", emptyenv, "foo\n"},
 		// action can see the environment
-		{"echo ${A_RANDOM_VAR}", Env{"A_RANDOM_VAR": "foo"}, "foo\n"},
+		{"echo $A_RANDOM_VAR", Env{"A_RANDOM_VAR": "foo"}, "foo\n"},
 		// action can execute arbitrary commands
 		{"python -c \"import sys; sys.stdout.write('hello from python');\"", emptyenv, "hello from python"},
+		// env does multiple command substitution
+		{"echo $FOO", Env{"FOO": "$[echo foo]-$[echo bar]"}, "foo-bar\n"},
+		// nested command substitutions are executed properly
+		{"echo $FOO", Env{"FOO": "$[bash -c \"echo $(echo foo)\"]-$[echo bar]"}, "foo-bar\n"},
 	}
 
 	for idx, kase := range kases {
@@ -33,6 +37,7 @@ func Test_Action_Execute(t *testing.T) {
 }
 
 func Test_Action_Execute_Errors(t *testing.T) {
+	noOutput := ""
 	kases := []struct {
 		statement string
 		env       Env
@@ -41,13 +46,17 @@ func Test_Action_Execute_Errors(t *testing.T) {
 	}{
 		// command prints error
 		{"bash -c \"echo foo; exit 1\"", Env{}, "exit status 1", "foo\n"},
+		// cmd substitution in env throws an error
+		{"bash -c \"echo $ERR\"", Env{"ERR": "$[bash -c \"exit 1\"]"}, "failed to apply environment", noOutput},
 	}
 
 	for _, kase := range kases {
 		logger := NewMockLogger()
 		action := NewAction(kase.statement, kase.env).WithStdout(logger)
 		assert.ErrorContains(t, action.Execute(), kase.errmsg)
-		assert.Contains(t, logger.Outputs(), kase.output)
+		if kase.output != noOutput {
+			assert.Contains(t, logger.Outputs(), kase.output)
+		}
 	}
 }
 

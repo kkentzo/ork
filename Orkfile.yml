@@ -7,9 +7,10 @@ tasks:
     env:
       GOOS: linux
       GOARCH: amd64
+      GO_BUILD: go build
       GO_TARGET: bin/ork
     actions:
-      - go build -o $GO_TARGET
+      - $GO_BUILD -o $GO_TARGET
 
   - name: test
     description: test the application

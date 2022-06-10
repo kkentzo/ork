@@ -138,12 +138,12 @@ tasks:
 	assert.Contains(t, log.Outputs(), "bar\n")
 }
 
-func Test_Orkfile_Env_Does_CommandSubstitution(t *testing.T) {
+func Test_Orkfile_Env_Does_CommandSubstitution_InBash(t *testing.T) {
 	yml := `
 tasks:
   - name: foo
     env:
-      BAR: echo bar
+      BAR: $(echo bar)
     actions:
       - 'bash -c "echo $BAR"'
 `
@@ -152,7 +152,26 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml), log))
 	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Outputs(), "bar\n")
-	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo $BAR")
+	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] bash -c \"echo $BAR\"")
+}
+
+func Test_Orkfile_Env_Does_CommandSubstitution_NotInBash(t *testing.T) {
+	yml := `
+tasks:
+  - name: foo
+    env:
+      TASK: $[echo clean] $[echo clean]
+    actions:
+      - go run . $TASK
+`
+	log := NewMockLogger()
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
+	assert.NoError(t, f.Task("foo").Execute())
+	assert.Equal(t, 2, len(log.Outputs()))
+	assert.Contains(t, log.Outputs()[0], "rm -rf bin")
+	assert.Contains(t, log.Outputs()[1], "rm -rf bin")
+	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] go run . $TASK")
 }
 
 func Test_Orkfile_GlobalEnv_OverridenByLocalEnv_PerTask(t *testing.T) {
@@ -218,6 +237,6 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml), log))
 	assert.NoError(t, f.Task("run_project_orkfile").Execute())
 	require.Equal(t, 1, len(log.Outputs()))
-	assert.Contains(t, log.Outputs()[0], "[build] go build")
+	assert.Contains(t, log.Outputs()[0], "[build] $GO_BUILD")
 	assert.Contains(t, log.Logs(logger.InfoLevel), "[run_project_orkfile] go run .")
 }

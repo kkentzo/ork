@@ -44,9 +44,9 @@ func (a *Action) WithEnvExpansion(expandEnv bool) *Action {
 }
 
 func (a *Action) Execute() error {
-	// setup the environment
-	for k, v := range a.env {
-		os.Setenv(k, v)
+	// first, setup the environment
+	if err := a.env.Apply(); err != nil {
+		return fmt.Errorf("failed to apply environment: %v", err)
 	}
 
 	if a.expandEnv {
@@ -57,7 +57,7 @@ func (a *Action) Execute() error {
 		return err
 	}
 
-	// setup the process' IO
+	// setup the process' IO streams
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = a.stdin
 	cmd.Stdout = a.stdout

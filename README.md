@@ -61,6 +61,24 @@ properties for all tasks (that, nevertheless, can still be overriden
 by individual tasks) such as environment variables, the default task
 etc.
 
+### Environment Variables
+
+Environment variables (global and task-specific) support command
+substitution interpolation using the special form `$[...]` like so:
+
+```yaml
+tasks:
+
+  - name: foobar
+    env:
+      VAR: $[echo foo]-$[echo bar]
+    actions:
+      - echo $VAR
+```
+
+The output of running `ork foobar` on the above Orkfile will be
+`foo-bar`.
+
 ### Task dependencies
 
 `ork` also supports task dependencies (with cyclic dependency
