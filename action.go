@@ -11,27 +11,21 @@ import (
 
 type Action struct {
 	statement string
+	env       Env
 	stdin     io.Reader
 	stdout    io.Writer
 	logger    Logger
 	expandEnv bool
 }
 
-func NewAction(statement string) *Action {
+func NewAction(statement string, env Env) *Action {
 	return &Action{
 		statement: statement,
+		env:       env,
 		stdin:     os.Stdin,
 		stdout:    os.Stdout,
 		expandEnv: true,
 	}
-}
-
-func (a *Action) WithEnv(env map[string]string) *Action {
-	// setup the environment
-	for k, v := range env {
-		os.Setenv(k, v)
-	}
-	return a
 }
 
 func (a *Action) WithStdin(stdin io.Reader) *Action {
@@ -50,6 +44,11 @@ func (a *Action) WithEnvExpansion(expandEnv bool) *Action {
 }
 
 func (a *Action) Execute() error {
+	// setup the environment
+	for k, v := range a.env {
+		os.Setenv(k, v)
+	}
+
 	if a.expandEnv {
 		a.statement = os.ExpandEnv(a.statement)
 	}

@@ -143,7 +143,7 @@ func Test_Orkfile_Env_Does_CommandSubstitution(t *testing.T) {
 tasks:
   - name: foo
     env:
-      BAR: $(echo bar)
+      BAR: echo bar
     actions:
       - 'bash -c "echo $BAR"'
 `
@@ -153,6 +153,33 @@ tasks:
 	assert.NoError(t, f.Task("foo").Execute())
 	assert.Contains(t, log.Outputs(), "bar\n")
 	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo $BAR")
+}
+
+func Test_Orkfile_GlobalEnv_OverridenByLocalEnv_PerTask(t *testing.T) {
+	yml := `
+global:
+  env:
+    FOO: foo
+tasks:
+  - name: bar
+    env:
+      FOO: bar
+    actions:
+      - 'bash -c "echo $FOO"'
+  - name: foo
+    actions:
+      - 'bash -c "echo $FOO"'
+`
+	log := NewMockLogger()
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
+	assert.NoError(t, f.Task("bar").Execute())
+	assert.NoError(t, f.Task("foo").Execute())
+
+	outputs := log.Outputs()
+	require.Equal(t, 2, len(outputs))
+	assert.Equal(t, "bar\n", outputs[0])
+	assert.Equal(t, "foo\n", outputs[1])
 }
 
 func Test_Orkfile_Parse_Fails_When_TwoTasks_Exist_WithTheSameName(t *testing.T) {

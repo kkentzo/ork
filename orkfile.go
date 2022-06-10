@@ -12,16 +12,16 @@ const (
 )
 
 type Global struct {
-	Default string            `yaml:"default"`
-	Env     map[string]string `yaml:"env"`
+	Default string `yaml:"default"`
+	Env     Env    `yaml:"env"`
 }
 
 type OrkfileTask struct {
-	Name        string            `yaml:"name"`
-	Description string            `yaml:"description"`
-	Env         map[string]string `yaml:"env"`
-	Actions     []string          `yaml:"actions"`
-	DependsOn   []string          `yaml:"depends_on"`
+	Name        string   `yaml:"name"`
+	Description string   `yaml:"description"`
+	Env         Env      `yaml:"env"`
+	Actions     []string `yaml:"actions"`
+	DependsOn   []string `yaml:"depends_on"`
 }
 
 type Orkfile struct {
@@ -56,7 +56,9 @@ func (f *Orkfile) Parse(contents []byte, logger Logger) error {
 		if _, ok := f.tasks[t.Name]; ok {
 			return fmt.Errorf("duplicate task: %s", t.Name)
 		}
-		f.tasks[t.Name] = NewTask(t, mergeEnv(f.Global.Env, t.Env), logger)
+		env := f.Global.Env.Copy()
+		env.Merge(t.Env)
+		f.tasks[t.Name] = NewTask(t, env, logger)
 	}
 	// create task dependencies
 	for _, t := range f.Tasks {
@@ -88,16 +90,4 @@ func (f *Orkfile) Task(label string) *Task {
 // return the default task or nil if it does not exist
 func (f *Orkfile) DefaultTask() *Task {
 	return f.tasks[f.Global.Default]
-}
-
-// will merge the local envs into the global env hash
-// locals will override globals
-func mergeEnv(global, local map[string]string) map[string]string {
-	if global == nil {
-		return local
-	}
-	for k, v := range local {
-		global[k] = v
-	}
-	return global
 }
