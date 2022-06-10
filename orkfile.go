@@ -20,6 +20,7 @@ type OrkfileTask struct {
 	Name        string   `yaml:"name"`
 	Description string   `yaml:"description"`
 	Env         Env      `yaml:"env"`
+	Action      string   `yaml:"action"`
 	Actions     []string `yaml:"actions"`
 	DependsOn   []string `yaml:"depends_on"`
 }
@@ -57,7 +58,11 @@ func (f *Orkfile) Parse(contents []byte, logger Logger) error {
 			return fmt.Errorf("duplicate task: %s", t.Name)
 		}
 		env := f.Global.Env.Copy().Merge(t.Env)
-		f.tasks[t.Name] = NewTask(t, env, logger)
+		task, err := NewTask(t, env, logger)
+		if err != nil {
+			return fmt.Errorf("task: %s: %v", t.Name, err)
+		}
+		f.tasks[t.Name] = task
 	}
 	// create task dependencies
 	for _, t := range f.Tasks {

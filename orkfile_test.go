@@ -168,9 +168,6 @@ tasks:
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml), log))
 	assert.NoError(t, f.Task("foo").Execute())
-	assert.Equal(t, 2, len(log.Outputs()))
-	assert.Contains(t, log.Outputs()[0], "rm -rf bin")
-	assert.Contains(t, log.Outputs()[1], "rm -rf bin")
 	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] go run . $TASK")
 }
 
@@ -239,4 +236,40 @@ tasks:
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "[build] $GO_BUILD")
 	assert.Contains(t, log.Logs(logger.InfoLevel), "[run_project_orkfile] go run .")
+}
+
+func Test_Orkfile_TaskWithNoAction(t *testing.T) {
+	yml := `
+tasks:
+  - name: foo
+`
+	log := NewMockLogger()
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
+	assert.NoError(t, f.Task("foo").Execute())
+}
+
+func Test_Orkfile_TaskWithAction_And_Actions(t *testing.T) {
+	yml := `
+tasks:
+  - name: foo
+    action: echo bar
+    actions:
+      - echo foo
+`
+	log := NewMockLogger()
+	f := New()
+	assert.ErrorContains(t, f.Parse([]byte(yml), log), "can not both be present in the task")
+}
+
+func Test_Orkfile_TaskWithAction_InsteadOf_Actions(t *testing.T) {
+	yml := `
+tasks:
+  - name: foo
+    action: echo foo
+`
+	log := NewMockLogger()
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
+	assert.NoError(t, f.Task("foo").Execute())
 }
