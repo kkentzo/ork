@@ -9,17 +9,15 @@ type Task struct {
 	description string
 	actions     []string
 	env         map[string]string
-	shell       string
 	deps        []*Task
 	logger      Logger
 }
 
-func NewTask(ot OrkfileTask, shell string, env map[string]string, logger Logger) *Task {
+func NewTask(ot OrkfileTask, env map[string]string, logger Logger) *Task {
 	return &Task{
 		name:        ot.Name,
 		description: ot.Description,
 		actions:     ot.Actions,
-		shell:       shell,
 		env:         env,
 		logger:      logger,
 	}
@@ -71,8 +69,8 @@ func (t *Task) executeActions() error {
 	// execute all the actions
 	for idx, action := range t.actions {
 		t.logger.Infof("[%s] %s", t.name, t.actions[idx])
-		sh := NewShell(t.shell).WithEnv(t.env).WithLogger(t.logger)
-		if err := sh.Execute(action); err != nil {
+		sh := NewAction(action).WithEnv(t.env).WithLogger(t.logger)
+		if err := sh.Execute(); err != nil {
 			return err
 		}
 	}

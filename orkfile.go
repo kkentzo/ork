@@ -3,20 +3,17 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	DEFAULT_SHELL   = "/bin/bash"
 	DEFAULT_ORKFILE = "Orkfile.yml"
 )
 
 type Global struct {
 	Default string            `yaml:"default"`
 	Env     map[string]string `yaml:"env"`
-	Shell   string            `yaml:"shell"`
 }
 
 type OrkfileTask struct {
@@ -54,16 +51,12 @@ func (f *Orkfile) Parse(contents []byte, logger Logger) error {
 	if err := yaml.Unmarshal(contents, f); err != nil {
 		return err
 	}
-	// determine shell
-	if f.Global.Shell == "" {
-		f.Global.Shell = pathToShell()
-	}
 	// create all tasks
 	for _, t := range f.Tasks {
 		if _, ok := f.tasks[t.Name]; ok {
 			return fmt.Errorf("duplicate task: %s", t.Name)
 		}
-		f.tasks[t.Name] = NewTask(t, f.Global.Shell, mergeEnv(f.Global.Env, t.Env), logger)
+		f.tasks[t.Name] = NewTask(t, mergeEnv(f.Global.Env, t.Env), logger)
 	}
 	// create task dependencies
 	for _, t := range f.Tasks {
@@ -107,11 +100,4 @@ func mergeEnv(global, local map[string]string) map[string]string {
 		global[k] = v
 	}
 	return global
-}
-
-func pathToShell() string {
-	if shell := os.Getenv("SHELL"); shell != "" {
-		return shell
-	}
-	return DEFAULT_SHELL
 }

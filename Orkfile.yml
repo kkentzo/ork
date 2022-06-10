@@ -1,19 +1,15 @@
 global:
   default: build
-  shell: /bin/bash
-  env:
-    GO_BUILD: go build
-    GO_TARGET: bin/ork
 
 tasks:
-
   - name: build
     description: build the application
     env:
       GOOS: linux
       GOARCH: amd64
+      GO_TARGET: bin/ork
     actions:
-      - ${GO_BUILD} -o ${GO_TARGET}
+      - go build -o $GO_TARGET
 
   - name: test
     description: test the application

@@ -5,6 +5,7 @@ import (
 
 	"github.com/apsdehal/go-logger"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Orkfile_NoGlobalSection(t *testing.T) {
@@ -109,7 +110,7 @@ tasks:
     env:
       LOCAL_ENV: foo
     actions:
-      - echo ${LOCAL_ENV}
+      - echo $LOCAL_ENV
 `
 	log := NewMockLogger()
 	f := New()
@@ -144,7 +145,7 @@ tasks:
     env:
       BAR: $(echo bar)
     actions:
-      - echo $BAR
+      - 'bash -c "echo $BAR"'
 `
 	log := NewMockLogger()
 	f := New()
@@ -168,4 +169,28 @@ tasks:
 	f := New()
 	assert.ErrorContains(t, f.Parse([]byte(yml), log), "duplicate task")
 
+}
+
+func Test_Orkfile_TaskNotFound(t *testing.T) {
+	yml := ``
+	log := NewMockLogger()
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
+	assert.Nil(t, f.Task("foo"))
+}
+
+func Test_Orkfile_Support_ArbitraryShell(t *testing.T) {
+	yml := `
+tasks:
+  - name: run_project_orkfile
+    actions:
+      - go run .
+`
+	log := NewMockLogger()
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
+	assert.NoError(t, f.Task("run_project_orkfile").Execute())
+	require.Equal(t, 1, len(log.Outputs()))
+	assert.Contains(t, log.Outputs()[0], "[build] go build")
+	assert.Contains(t, log.Logs(logger.InfoLevel), "[run_project_orkfile] go run .")
 }

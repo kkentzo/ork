@@ -16,32 +16,21 @@ files).
 and [Gitlab](https://docs.gitlab.com/ee/ci/yaml/gitlab_ci_yaml.html)
 CI products.
 
-## `Orkfile`
+## Features
 
-`ork` is based on project-specific Orkfiles (`Orkfile.yml`) which
-specify and set up the various tasks and their
-dependencies. `Orkfile`s consist of two main sections:
+### Workflow organization
 
-- a `global` section where general settings are specified (shell, environment etc.)
-- a `tasks` section which defines the various workflows that can be executed
-
-Here's an example for a golang application:
-
+`ork` organizes workflows in yaml format (`Orkfile.yml`) as a
+collection of tasks, each consisting of a sequence of actions that are
+executed independently of each other (i.e. in separate processes). For
+example:
 
 ```yaml
 global:
-  # the default task
   default: build
-  # shell to execute commands into
-  shell: /bin/bash
-  # environment variables available to all tasks
   env:
-    GO_BUILD: go build
-    GO_TARGET: bin/ork
+    GO_BUILD: go -ldflags="-s -w"
 
-# task definitions
-# each task can have its own environment variables and
-# a bunch of actions to be executed in the globally defined shell (default: bash)
 tasks:
 
   - name: build
@@ -49,39 +38,67 @@ tasks:
     env:
       GOOS: linux
       GOARCH: amd64
+      GO_TARGET: bin/foo
     actions:
-      - ${GO_BUILD} -o ${GO_TARGET}
+      - $GO_BUILD -o $GO_TARGET
+
+```
+
+A task can contain any kind of executable actions, e.g.:
+
+```yaml
+tasks:
+  - name: say-hello
+    description: Say hello from python
+    actions:
+      - python -c "import sys; sys.stdout.write('hello from python')"
+```
+
+### Global configuration
+
+As seen above, Orkfiles can also have a global section for setting up
+properties for all tasks (that, nevertheless, can still be overriden
+by individual tasks) such as environment variables, the default task
+etc.
+
+### Task dependencies
+
+`ork` also supports task dependencies (with cyclic dependency
+detection), for example:
+
+```yaml
+tasks:
+
+  - name: build
+    description: build the application
+    actions:
+      - ...
 
   - name: test
     description: test the application
+    actions:
+      - ...
+
+  - name: deploy
+    description: deploy the application
     depends_on:
       - build
+      - test
     actions:
-      - go test . -v -count=1
-
-  - name: clean
-    actions:
-      - rm -rf bin
+      - ...
 ```
-
-## Features
-
-In general, a task (such as `build`) is a list of actions that are
-executed in the context of an action-specific shell process.
-
-`ork` provides the following features:
-
-- self-documented tasks
-- task dependencies (with cyclic dependency detection)
-- custom shell specification
-- global environment variables (apply to all tasks)
-- local, task-specific environment variables (override globals)
 
 ## Installation & Usage
 
 `ork` can be installed by downloading the latest release binary from
 [here](https://github.com/kkentzo/ork/releases) and putting it in a
 convenient place in your `$PATH` (e.g. `/usr/local/bin`).
+
+`ork` can execute one or more tasks defined in an Orkfile by running:
+
+```bash
+$ ork task1 task2 ...
+```
 
 Run `ork -h` for program options.
 

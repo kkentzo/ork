@@ -7,64 +7,61 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/google/shlex"
 )
 
-type Shell struct {
-	shell     string
+type Action struct {
+	statement string
 	stdin     io.Reader
 	logger    Logger
 	expandEnv bool
 }
 
-func NewShell(shell string) *Shell {
-	return &Shell{
-		shell:     shell,
+func NewAction(statement string) *Action {
+	return &Action{
+		statement: statement,
 		stdin:     os.Stdin,
 		expandEnv: true,
 	}
 }
 
-func (sh *Shell) WithEnv(env map[string]string) *Shell {
+func (a *Action) WithEnv(env map[string]string) *Action {
 	// setup the environment
 	for k, v := range env {
 		os.Setenv(k, v)
 	}
-	return sh
+	return a
 }
 
-func (sh *Shell) WithStdin(stdin io.Reader) *Shell {
-	sh.stdin = stdin
-	return sh
+func (a *Action) WithStdin(stdin io.Reader) *Action {
+	a.stdin = stdin
+	return a
 }
 
-func (sh *Shell) WithLogger(logger Logger) *Shell {
-	sh.logger = logger
-	return sh
+func (a *Action) WithLogger(logger Logger) *Action {
+	a.logger = logger
+	return a
 }
 
-// set whether the statement to be executed will be env-expanded
-// this means that any form containing $VAR or ${VAR} will be replaced with the value from env
-// if this is on, it enables command substitution in env variables
-// if this is off, it enables reading env variables that were set during the command's execution
-// default value: true
-func (sh *Shell) SetExpandEnv(expandEnv bool) {
-	sh.expandEnv = expandEnv
+func (a *Action) WithEnvExpansion(expandEnv bool) *Action {
+	a.expandEnv = expandEnv
+	return a
 }
 
-// spawn the supplied shell and stream the given statement to the shell process
-// process output is logged using the shell's logger
-func (sh *Shell) Execute(statement string) error {
-	if sh.expandEnv {
-		statement = os.ExpandEnv(statement)
+func (a *Action) Execute() error {
+	if a.expandEnv {
+		a.statement = os.ExpandEnv(a.statement)
 	}
-	cmd := exec.Command(sh.shell, "-c", statement)
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = sh.stdin
+	cmd, err := createCommand(a.statement)
+	if err != nil {
+		return err
+	}
 
-	var (
-		stdout io.ReadCloser
-		err    error
-	)
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = a.stdin
+
+	var stdout io.ReadCloser
 	if stdout, err = cmd.StdoutPipe(); err != nil {
 		return fmt.Errorf("failed to connect to shell's standard output: %v", err)
 	}
@@ -76,7 +73,7 @@ func (sh *Shell) Execute(statement string) error {
 
 	// start capturing the shell's stdout
 	captureErr := make(chan error, 1)
-	go captureAndLogOutput(stdout, sh.logger, captureErr)
+	go captureAndLogOutput(stdout, a.logger, captureErr)
 
 	// wait for the command to finish
 	if err := cmd.Wait(); err != nil {
@@ -88,6 +85,22 @@ func (sh *Shell) Execute(statement string) error {
 		return fmt.Errorf("failed to read shell's standard output: %v", err)
 	}
 	return nil
+}
+
+func createCommand(statement string) (*exec.Cmd, error) {
+	var name string
+	var args []string
+
+	fields, err := shlex.Split(statement)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse action: %s\nerror: %v", statement, err)
+	}
+	if len(fields) > 0 {
+		name = fields[0]
+		args = fields[1:]
+	}
+
+	return exec.Command(name, args...), nil
 }
 
 func captureAndLogOutput(stdout io.ReadCloser, logger Logger, captureErr chan error) {
