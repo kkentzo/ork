@@ -21,6 +21,9 @@ type Logger interface {
 	Debugf(string, ...interface{})
 
 	Output(string)
+
+	// implements the io.Writer interface
+	Write(p []byte) (n int, err error)
 }
 
 type OrkLogger struct {
@@ -34,6 +37,11 @@ func NewLogger() (Logger, error) {
 	}
 	l.SetFormat("[%{level}] %{message}")
 	return &OrkLogger{Logger: l}, nil
+}
+
+func (l *OrkLogger) Write(p []byte) (n int, err error) {
+	l.Output(string(p))
+	return len(p), nil
 }
 
 func (l *OrkLogger) Output(message string) {

@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/google/shlex"
 )
@@ -14,6 +12,7 @@ import (
 type Action struct {
 	statement string
 	stdin     io.Reader
+	stdout    io.Writer
 	logger    Logger
 	expandEnv bool
 }
@@ -22,6 +21,7 @@ func NewAction(statement string) *Action {
 	return &Action{
 		statement: statement,
 		stdin:     os.Stdin,
+		stdout:    os.Stdout,
 		expandEnv: true,
 	}
 }
@@ -39,8 +39,8 @@ func (a *Action) WithStdin(stdin io.Reader) *Action {
 	return a
 }
 
-func (a *Action) WithLogger(logger Logger) *Action {
-	a.logger = logger
+func (a *Action) WithStdout(stdout io.Writer) *Action {
+	a.stdout = stdout
 	return a
 }
 
@@ -58,32 +58,21 @@ func (a *Action) Execute() error {
 		return err
 	}
 
+	// setup the process' IO
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = a.stdin
-
-	var stdout io.ReadCloser
-	if stdout, err = cmd.StdoutPipe(); err != nil {
-		return fmt.Errorf("failed to connect to shell's standard output: %v", err)
-	}
+	cmd.Stdout = a.stdout
 
 	// spawn the command
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start the shell process: %v", err)
 	}
 
-	// start capturing the shell's stdout
-	captureErr := make(chan error, 1)
-	go captureAndLogOutput(stdout, a.logger, captureErr)
-
 	// wait for the command to finish
 	if err := cmd.Wait(); err != nil {
 		return fmt.Errorf("process failed: %v", err)
 	}
 
-	// wait for command output to finish
-	if err := <-captureErr; err != nil {
-		return fmt.Errorf("failed to read shell's standard output: %v", err)
-	}
 	return nil
 }
 
@@ -101,33 +90,4 @@ func createCommand(statement string) (*exec.Cmd, error) {
 	}
 
 	return exec.Command(name, args...), nil
-}
-
-func captureAndLogOutput(stdout io.ReadCloser, logger Logger, captureErr chan error) {
-	// start reading from stdout
-	var (
-		n   int
-		err error
-	)
-	buf := make([]byte, 256)
-	reader := bufio.NewReader(stdout)
-	for {
-		n, err = reader.Read(buf)
-		if n > 0 {
-			logger.Output(string(buf[:n]))
-		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			} else if strings.HasSuffix(err.Error(), "file already closed") {
-				// this means that the process has finished and stdout is closed
-				break
-			} else {
-				fmt.Printf("err=%+v\n", err)
-				captureErr <- err
-				return
-			}
-		}
-	}
-	close(captureErr)
 }

@@ -67,6 +67,11 @@ func (l *MockLogger) Debugf(msg string, a ...interface{}) {
 	l.Debug(fmt.Sprintf(msg, a...))
 }
 
+func (l *MockLogger) Write(p []byte) (n int, err error) {
+	l.Output(string(p))
+	return len(p), nil
+}
+
 func (l *MockLogger) Output(msg string) {
 	l.outputs = append(l.outputs, msg)
 }

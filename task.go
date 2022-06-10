@@ -69,7 +69,7 @@ func (t *Task) executeActions() error {
 	// execute all the actions
 	for idx, action := range t.actions {
 		t.logger.Infof("[%s] %s", t.name, t.actions[idx])
-		sh := NewAction(action).WithEnv(t.env).WithLogger(t.logger)
+		sh := NewAction(action).WithEnv(t.env).WithStdout(t.logger)
 		if err := sh.Execute(); err != nil {
 			return err
 		}
