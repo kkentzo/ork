@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -24,18 +25,38 @@ func (this Env) Copy() Env {
 // all env values will be parsed to detect substitution patterns $[...]
 // which will be executed as actions whose output will be interpolated in the env value
 func (this Env) Apply() error {
+	env := []struct {
+		key   string
+		value string
+	}{}
+
+	// assemble env into an array
 	for ek, ev := range this {
+		env = append(env, struct {
+			key   string
+			value string
+		}{ek, ev})
+	}
+	// sort array lexicographically on keys
+	sort.Slice(env, func(i, j int) bool {
+		return env[i].key < env[j].key
+	})
+
+	// apply sorted key, value entries
+	for _, kv := range env {
 		val := ""
-		for _, token := range parseEnvTokens(ev) {
+		for _, token := range parseEnvTokens(kv.value) {
 			v, err := token.expand()
 			if err != nil {
-				return fmt.Errorf("key %s: %s: %v", ek, ev, err)
+				return fmt.Errorf("key %s: %s: %v", kv.key, kv.value, err)
 			}
 
 			val += v
 		}
-		os.Setenv(ek, val)
+
+		os.Setenv(kv.key, val)
 	}
+
 	return nil
 }
 

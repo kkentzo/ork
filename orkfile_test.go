@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/apsdehal/go-logger"
@@ -239,4 +240,32 @@ tasks:
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "[build] $GO_BUILD")
 	assert.Contains(t, log.Logs(logger.InfoLevel), "[run_project_orkfile] go run .")
+}
+
+func Test_Orkfile_Supports_Env_Ordering(t *testing.T) {
+	env_items := ""
+	template_val := ""
+	target_val := ""
+	for i := 0; i <= 20; i++ {
+		env_items += fmt.Sprintf("      VAR_%.2d: %d\n", i, i)
+		template_val += fmt.Sprintf("$VAR_%.2d", i)
+		target_val += fmt.Sprint(i)
+	}
+
+	yml := fmt.Sprintf(`
+tasks:
+  - name: env_ordering
+    env:
+      W_VAR: %s
+%s
+    actions:
+      - bash -c "echo $W_VAR"
+`, template_val, env_items)
+
+	log := NewMockLogger()
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
+	assert.NoError(t, f.Task("env_ordering").Execute())
+	require.Equal(t, 1, len(log.Outputs()))
+	assert.Contains(t, log.Outputs()[0], target_val)
 }
