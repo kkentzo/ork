@@ -21,9 +21,9 @@ CI products.
 ### Workflow organization
 
 `ork` organizes workflows in yaml format (`Orkfile.yml`) as a
-collection of tasks, each consisting of a single action (using
-`action`) or a sequence of actions (using `actions`) that are executed
-independently of each other (i.e. in separate processes). For example:
+collection of tasks, each consisting of a sequence of actions that are
+executed independently of each other (i.e. in separate processes). For
+example:
 
 ```yaml
 global:
@@ -39,11 +39,12 @@ tasks:
       GOOS: linux
       GOARCH: amd64
       GO_TARGET: bin/foo
-    action: $GO_BUILD -o $GO_TARGET
+    actions:
+      - $GO_BUILD -o $GO_TARGET
 
 ```
 
-A task can contain any kind of one or more executable actions, e.g.:
+A task can contain any kind of executable actions, e.g.:
 
 ```yaml
 tasks:
