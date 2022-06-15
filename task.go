@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -14,26 +13,14 @@ type Task struct {
 	logger      Logger
 }
 
-func NewTask(ot OrkfileTask, env Env, logger Logger) (*Task, error) {
-	var actions []string
-
-	if ot.Action != "" && len(ot.Actions) > 0 {
-		return nil, errors.New("`action` and `actions` can not both be present in the task")
-	}
-
-	if ot.Action != "" {
-		actions = []string{ot.Action}
-	} else {
-		actions = ot.Actions
-	}
-
+func NewTask(ot OrkfileTask, env Env, logger Logger) *Task {
 	return &Task{
 		name:        ot.Name,
 		description: ot.Description,
-		actions:     actions,
+		actions:     ot.Actions,
 		env:         env,
 		logger:      logger,
-	}, nil
+	}
 }
 
 func (t *Task) Info() string {

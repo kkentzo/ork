@@ -9,13 +9,16 @@ tasks:
       GOARCH: amd64
       GO_BUILD: go build
       GO_TARGET: bin/ork
-    action: $GO_BUILD -o $GO_TARGET
+    actions:
+      - $GO_BUILD -o $GO_TARGET
 
   - name: test
     description: test the application
     depends_on:
       - build
-    action: go test . -v -count=1
+    actions:
+      - go test . -v -count=1
 
   - name: clean
-    action: rm -rf bin
+    actions:
+      - rm -rf bin
