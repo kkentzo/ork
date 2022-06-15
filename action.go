@@ -72,12 +72,12 @@ func (a *Action) Execute() error {
 
 	// spawn the command
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start the shell process: %v", err)
+		return fmt.Errorf("failed to start action: %v", err)
 	}
 
 	// wait for the command to finish
 	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("process failed: %v", err)
+		return fmt.Errorf("action failed: %v", err)
 	}
 
 	return nil
