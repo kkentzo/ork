@@ -12,6 +12,7 @@ import (
 type Action struct {
 	statement string
 	env       Env
+	chdir     string
 	stdin     io.Reader
 	stdout    io.Writer
 	logger    Logger
@@ -43,6 +44,11 @@ func (a *Action) WithEnvExpansion(expandEnv bool) *Action {
 	return a
 }
 
+func (a *Action) WithWorkingDirectory(chdir string) *Action {
+	a.chdir = chdir
+	return a
+}
+
 func (a *Action) Execute() error {
 	// first, setup the environment
 	if err := a.env.Apply(); err != nil {
@@ -57,6 +63,8 @@ func (a *Action) Execute() error {
 		return err
 	}
 
+	// setup the process' working directory
+	cmd.Dir = a.chdir
 	// setup the process' IO streams
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = a.stdin

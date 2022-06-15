@@ -19,6 +19,7 @@ type Global struct {
 type OrkfileTask struct {
 	Name        string   `yaml:"name"`
 	Description string   `yaml:"description"`
+	WorkingDir  string   `yaml:"working_dir"`
 	Env         Env      `yaml:"env"`
 	Actions     []string `yaml:"actions"`
 	DependsOn   []string `yaml:"depends_on"`

@@ -8,6 +8,7 @@ type Task struct {
 	name        string
 	description string
 	actions     []string
+	chdir       string
 	env         Env
 	deps        []*Task
 	logger      Logger
@@ -18,6 +19,7 @@ func NewTask(ot OrkfileTask, env Env, logger Logger) *Task {
 		name:        ot.Name,
 		description: ot.Description,
 		actions:     ot.Actions,
+		chdir:       ot.WorkingDir,
 		env:         env,
 		logger:      logger,
 	}
@@ -69,8 +71,8 @@ func (t *Task) executeActions() error {
 	// execute all the actions
 	for idx, action := range t.actions {
 		t.logger.Infof("[%s] %s", t.name, t.actions[idx])
-		sh := NewAction(action, t.env).WithStdout(t.logger)
-		if err := sh.Execute(); err != nil {
+		a := NewAction(action, t.env).WithStdout(t.logger).WithWorkingDirectory(t.chdir)
+		if err := a.Execute(); err != nil {
 			return err
 		}
 	}

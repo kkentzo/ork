@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/apsdehal/go-logger"
@@ -268,4 +269,24 @@ tasks:
 	assert.NoError(t, f.Task("env_ordering").Execute())
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], target_val)
+}
+
+func Test_Orkfile_Task_With_Working_Directory(t *testing.T) {
+	os.Mkdir("test_foo", os.ModePerm)
+	os.WriteFile("test_foo/bar", []byte("hello"), os.ModePerm)
+	defer os.RemoveAll("test_foo")
+
+	yml := `
+tasks:
+  - name: dir
+    working_dir: test_foo
+    actions:
+      - cat bar
+`
+	log := NewMockLogger()
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml), log))
+	assert.NoError(t, f.Task("dir").Execute())
+	require.Equal(t, 1, len(log.Outputs()))
+	assert.Contains(t, log.Outputs()[0], "hello")
 }
