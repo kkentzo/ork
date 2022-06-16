@@ -5,65 +5,113 @@ import (
 	"os"
 	"testing"
 
-	"github.com/apsdehal/go-logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Orkfile_NoGlobalSection(t *testing.T) {
-	yml := `
+func Test_Orkfiles(t *testing.T) {
+	kases := []struct {
+		test    string
+		yml     string
+		task    string
+		errmsg  string
+		outputs []string
+	}{
+		// ===================================
+		{
+			test: "no global section",
+			yml: `
 tasks:
   - name: foo
     actions:
       - echo foo
-`
-	log := NewMockLogger()
-	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.NoError(t, f.Task("foo").Execute())
-	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo foo")
+`,
+			task:    "foo",
+			outputs: []string{"foo\n"},
+		},
+		// ===================================
+		{
+			test: "default task",
+			yml: `
+global:
+  default: foo
+tasks:
+  - name: foo
+    actions:
+      - echo foo
+`,
+			task:    "foo",
+			outputs: []string{"foo\n"},
+		},
+		// ===================================
+		{
+			test: "uses global env",
+			yml: `
+global:
+  env:
+    GLOBAL_ENV: foo
+tasks:
+  - name: foo
+    actions:
+      - echo ${GLOBAL_ENV}
+`,
+			task:    "foo",
+			outputs: []string{"foo\n"},
+		},
+		// ===================================
+		{
+			test: "local env overrides global env",
+			yml: `
+global:
+  env:
+    MY_VAR: bar
+tasks:
+  - name: foo
+    env:
+      MY_VAR: foo
+    actions:
+      - echo ${MY_VAR}
+`,
+			task:    "foo",
+			outputs: []string{"foo\n"},
+		},
+		// ===================================
+		{
+			test: "command substitution in env",
+			yml: `
+tasks:
+  - name: foo
+    env:
+      TASK: $[echo clean] $[echo clean]
+    actions:
+      - go run . $TASK
+`,
+			task:    "foo",
+			outputs: []string{"rm -rf bin", "rm -rf bin"},
+		},
+		// ===================================
+	}
+
+	for _, kase := range kases {
+		log := NewMockLogger()
+		// parse orkfile
+		f := New()
+		require.NoError(t, f.Parse([]byte(kase.yml)), kase.test)
+		// find and execute task
+		task := f.Task(kase.task)
+		require.NotNil(t, task, kase.test)
+		assert.NoError(t, task.Execute(f.Env(), log), kase.test)
+		// check expected outputs
+		outputs := log.Outputs()
+		require.Equal(t, len(kase.outputs), len(outputs), kase.test)
+		for idx := 0; idx < len(outputs); idx++ {
+			assert.Contains(t, outputs[idx], kase.outputs[idx], kase.test)
+		}
+	}
 }
 
 func Test_EmptyOrkfile(t *testing.T) {
-	yml := ``
-	log := NewMockLogger()
-	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-}
-
-func Test_DefaultTask(t *testing.T) {
-	yml := `
-global:
-  default: foo
-tasks:
-  - name: foo
-    actions:
-      - echo foo
-
-`
-	log := NewMockLogger()
-	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.NoError(t, f.DefaultTask().Execute())
-	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo foo")
-}
-
-func Test_Orkfile_PrintsCommandOutput(t *testing.T) {
-	yml := `
-global:
-  default: foo
-tasks:
-  - name: foo
-    actions:
-      - echo foo
-
-`
-	log := NewMockLogger()
-	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.NoError(t, f.Task("foo").Execute())
-	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] echo foo")
-	assert.Contains(t, log.Outputs(), "foo\n")
+	assert.NoError(t, New().Parse([]byte("")))
 }
 
 func Test_Orkfile_PreventsCyclicDependencyDetection(t *testing.T) {
@@ -81,99 +129,11 @@ tasks:
     actions:
       - echo bar
 `
-	log := NewMockLogger()
-	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	err := f.Task("foo").Execute()
-	assert.ErrorContains(t, err, "cyclic dependency")
-}
 
-func Test_Orkfile_UsesGlobalEnv(t *testing.T) {
-	yml := `
-global:
-  env:
-    GLOBAL_ENV: foo
-tasks:
-  - name: foo
-    actions:
-      - echo ${GLOBAL_ENV}
-`
-	log := NewMockLogger()
 	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.NoError(t, f.Task("foo").Execute())
-	assert.Contains(t, log.Outputs(), "foo\n")
-}
-
-func Test_Orkfile_UsesLocalEnv(t *testing.T) {
-	yml := `
-tasks:
-  - name: foo
-    env:
-      LOCAL_ENV: foo
-    actions:
-      - echo $LOCAL_ENV
-`
+	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
-	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.NoError(t, f.Task("foo").Execute())
-	assert.Contains(t, log.Outputs(), "foo\n")
-}
-
-func Test_Orkfile_LocalEnv_Overrides_GlobalEnv(t *testing.T) {
-	yml := `
-global:
-  env:
-    VARIABLE: foo
-tasks:
-  - name: foo
-    env:
-      VARIABLE: bar
-    actions:
-      - echo ${VARIABLE}
-`
-	log := NewMockLogger()
-	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.NoError(t, f.Task("foo").Execute())
-	assert.Contains(t, log.Outputs(), "bar\n")
-}
-
-func Test_Orkfile_Env_Does_CommandSubstitution_InBash(t *testing.T) {
-	yml := `
-tasks:
-  - name: foo
-    env:
-      BAR: $(echo bar)
-    actions:
-      - 'bash -c "echo $BAR"'
-`
-	log := NewMockLogger()
-	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.NoError(t, f.Task("foo").Execute())
-	assert.Contains(t, log.Outputs(), "bar\n")
-	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] bash -c \"echo $BAR\"")
-}
-
-func Test_Orkfile_Env_Does_CommandSubstitution_NotInBash(t *testing.T) {
-	yml := `
-tasks:
-  - name: foo
-    env:
-      TASK: $[echo clean] $[echo clean]
-    actions:
-      - go run . $TASK
-`
-	log := NewMockLogger()
-	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.NoError(t, f.Task("foo").Execute())
-	assert.Equal(t, 2, len(log.Outputs()))
-	assert.Contains(t, log.Outputs()[0], "rm -rf bin")
-	assert.Contains(t, log.Outputs()[1], "rm -rf bin")
-	assert.Contains(t, log.Logs(logger.InfoLevel), "[foo] go run . $TASK")
+	assert.ErrorContains(t, f.Task("foo").Execute(f.Env(), log), "cyclic dependency")
 }
 
 func Test_Orkfile_GlobalEnv_OverridenByLocalEnv_PerTask(t *testing.T) {
@@ -186,16 +146,17 @@ tasks:
     env:
       FOO: bar
     actions:
-      - 'bash -c "echo $FOO"'
+      - echo $FOO
   - name: foo
     actions:
-      - 'bash -c "echo $FOO"'
+      - echo $FOO
 `
-	log := NewMockLogger()
 	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.NoError(t, f.Task("bar").Execute())
-	assert.NoError(t, f.Task("foo").Execute())
+	assert.NoError(t, f.Parse([]byte(yml)))
+	log := NewMockLogger()
+
+	assert.NoError(t, f.Task("bar").Execute(f.Env(), log))
+	assert.NoError(t, f.Task("foo").Execute(f.Env(), log))
 
 	outputs := log.Outputs()
 	require.Equal(t, 2, len(outputs))
@@ -213,34 +174,9 @@ tasks:
     actions:
       - echo foo2
 `
-	log := NewMockLogger()
-	f := New()
-	assert.ErrorContains(t, f.Parse([]byte(yml), log), "duplicate task")
 
-}
-
-func Test_Orkfile_TaskNotFound(t *testing.T) {
-	yml := ``
-	log := NewMockLogger()
 	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.Nil(t, f.Task("foo"))
-}
-
-func Test_Orkfile_Support_ArbitraryShell(t *testing.T) {
-	yml := `
-tasks:
-  - name: run_project_orkfile
-    actions:
-      - go run .
-`
-	log := NewMockLogger()
-	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.NoError(t, f.Task("run_project_orkfile").Execute())
-	require.Equal(t, 1, len(log.Outputs()))
-	assert.Contains(t, log.Outputs()[0], "[build] $GO_BUILD")
-	assert.Contains(t, log.Logs(logger.InfoLevel), "[run_project_orkfile] go run .")
+	assert.ErrorContains(t, f.Parse([]byte(yml)), "duplicate task")
 }
 
 func Test_Orkfile_Supports_Env_Ordering(t *testing.T) {
@@ -263,10 +199,11 @@ tasks:
       - bash -c "echo $W_VAR"
 `, template_val, env_items)
 
-	log := NewMockLogger()
 	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.NoError(t, f.Task("env_ordering").Execute())
+	assert.NoError(t, f.Parse([]byte(yml)))
+	log := NewMockLogger()
+
+	assert.NoError(t, f.Task("env_ordering").Execute(f.Env(), log))
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], target_val)
 }
@@ -283,10 +220,11 @@ tasks:
     actions:
       - cat bar
 `
-	log := NewMockLogger()
 	f := New()
-	assert.NoError(t, f.Parse([]byte(yml), log))
-	assert.NoError(t, f.Task("dir").Execute())
+	assert.NoError(t, f.Parse([]byte(yml)))
+	log := NewMockLogger()
+
+	assert.NoError(t, f.Task("dir").Execute(f.Env(), log))
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "hello")
 }

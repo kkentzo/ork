@@ -36,9 +36,6 @@ func lookupTasks(orkfile *Orkfile, labels []string) ([]*Task, error) {
 	return tasks, nil
 }
 
-func printTasks(orkfile *Orkfile, labels []string) {
-}
-
 func main() {
 	logger, err := NewLogger()
 	if err != nil {
@@ -63,7 +60,7 @@ func main() {
 			}
 			// parse file
 			orkfile := New()
-			if err := orkfile.Parse(contents, logger); err != nil {
+			if err := orkfile.Parse(contents); err != nil {
 				return
 			}
 			// return the available task to `complete` command
@@ -78,9 +75,8 @@ func main() {
 				logger.Fatalf("failed to find Orkfile: %v", err)
 			}
 			orkfile := New()
-			if err := orkfile.Parse(contents, logger); err != nil {
+			if err := orkfile.Parse(contents); err != nil {
 				logger.Fatalf("failed to parse Orkfile: %v", err)
-				os.Exit(1)
 			}
 
 			if c.Bool("tasks") {
@@ -100,7 +96,7 @@ func main() {
 					}
 				} else {
 					if task := orkfile.DefaultTask(); task != nil {
-						return task.Execute()
+						return task.Execute(orkfile.Env(), logger)
 					} else {
 						return errors.New("no default task was defined in Orkfile")
 					}
@@ -118,7 +114,7 @@ func main() {
 			for _, task := range tasks {
 				if c.Bool("info") {
 					fmt.Println(task.Info())
-				} else if err := task.Execute(); err != nil {
+				} else if err := task.Execute(orkfile.Env(), logger); err != nil {
 					log.Fatal(err.Error())
 				}
 			}

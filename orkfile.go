@@ -29,8 +29,6 @@ type Orkfile struct {
 	Global Global        `yaml:"global"`
 	Tasks  []OrkfileTask `yaml:"tasks"`
 
-	path string
-
 	tasks map[string]*Task
 }
 
@@ -42,23 +40,20 @@ func Read(path string) (contents []byte, err error) {
 	return
 }
 
-func New() *Orkfile {
-	return &Orkfile{}
-}
+func New() *Orkfile { return &Orkfile{} }
 
-func (f *Orkfile) Parse(contents []byte, logger Logger) error {
+func (f *Orkfile) Parse(contents []byte) error {
 	f.tasks = map[string]*Task{}
-
 	if err := yaml.Unmarshal(contents, f); err != nil {
 		return err
 	}
+
 	// create all tasks
 	for _, t := range f.Tasks {
 		if _, ok := f.tasks[t.Name]; ok {
 			return fmt.Errorf("duplicate task: %s", t.Name)
 		}
-		env := f.Global.Env.Copy().Merge(t.Env)
-		f.tasks[t.Name] = NewTask(t, env, logger)
+		f.tasks[t.Name] = NewTask(t)
 	}
 	// create task dependencies
 	for _, t := range f.Tasks {
@@ -71,6 +66,7 @@ func (f *Orkfile) Parse(contents []byte, logger Logger) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -82,7 +78,6 @@ func (f *Orkfile) AllTasks() []*Task {
 	return tasks
 }
 
-// return the task corresponding to label or nil if it does not exist
 func (f *Orkfile) Task(label string) *Task {
 	return f.tasks[label]
 }
@@ -90,4 +85,8 @@ func (f *Orkfile) Task(label string) *Task {
 // return the default task or nil if it does not exist
 func (f *Orkfile) DefaultTask() *Task {
 	return f.tasks[f.Global.Default]
+}
+
+func (f *Orkfile) Env() Env {
+	return f.Global.Env
 }
