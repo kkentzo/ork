@@ -27,6 +27,10 @@ func NewMockLogger() *MockLogger {
 	return &MockLogger{logs: logs, outputs: []string{}}
 }
 
+func (l *MockLogger) SetLogLevel(lvl string) error {
+	return nil
+}
+
 func (l *MockLogger) Logs(lvl logger.LogLevel) []string {
 	return l.logs[lvl]
 }

@@ -7,6 +7,20 @@ import (
 	"github.com/apsdehal/go-logger"
 )
 
+const (
+	LOG_LEVEL_INFO  = "info"
+	LOG_LEVEL_ERROR = "error"
+	LOG_LEVEL_DEBUG = "debug"
+)
+
+var (
+	logLevels = map[string]logger.LogLevel{
+		LOG_LEVEL_INFO:  logger.InfoLevel,
+		LOG_LEVEL_DEBUG: logger.DebugLevel,
+		LOG_LEVEL_ERROR: logger.ErrorLevel,
+	}
+)
+
 type Logger interface {
 	Fatal(string)
 	Fatalf(string, ...interface{})
@@ -24,6 +38,8 @@ type Logger interface {
 
 	// implements the io.Writer interface
 	Write(p []byte) (n int, err error)
+
+	SetLogLevel(string) error
 }
 
 type OrkLogger struct {
@@ -37,6 +53,15 @@ func NewLogger() (Logger, error) {
 	}
 	l.SetFormat("[%{level}] %{message}")
 	return &OrkLogger{Logger: l}, nil
+}
+
+func (l *OrkLogger) SetLogLevel(level string) error {
+	lvl, ok := logLevels[level]
+	if !ok {
+		return fmt.Errorf("uknown log level: %s", level)
+	}
+	l.Logger.SetLogLevel(lvl)
+	return nil
 }
 
 func (l *OrkLogger) Write(p []byte) (n int, err error) {

@@ -33,8 +33,23 @@ func main() {
 		Name:        "ork",
 		Description: "command workflow management for software projects",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "path", Aliases: []string{"p"}, Usage: "path to Orkfile", Value: DEFAULT_ORKFILE},
-			&cli.BoolFlag{Name: "info", Aliases: []string{"i"}, Usage: "show info for the supplied task or all tasks"},
+			&cli.StringFlag{
+				Name:    "path",
+				Aliases: []string{"p"},
+				Usage:   "path to Orkfile",
+				Value:   DEFAULT_ORKFILE,
+			},
+			&cli.StringFlag{
+				Name:    "level",
+				Aliases: []string{"l"},
+				Usage:   "log level (one of 'info', 'error', 'debug')",
+				Value:   LOG_LEVEL_INFO,
+			},
+			&cli.BoolFlag{
+				Name:    "info",
+				Aliases: []string{"i"},
+				Usage:   "show info for the supplied task or all tasks",
+			},
 		},
 		EnableBashCompletion: true,
 		BashComplete: func(c *cli.Context) {
@@ -54,6 +69,9 @@ func main() {
 			}
 		},
 		Action: func(c *cli.Context) error {
+			// set log level for logger
+			logger.SetLogLevel(c.String("level"))
+
 			// read Orkfile contents
 			contents, err := Read(c.String("path"))
 			if err != nil {
