@@ -23,6 +23,8 @@ type OrkfileTask struct {
 	Env         Env      `yaml:"env"`
 	Actions     []string `yaml:"actions"`
 	DependsOn   []string `yaml:"depends_on"`
+	OnSuccess   []string `yaml:"on_success"`
+	OnFailure   []string `yaml:"on_failure"`
 }
 
 type Orkfile struct {

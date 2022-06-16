@@ -90,6 +90,21 @@ tasks:
 			outputs: []string{"rm -rf bin", "rm -rf bin"},
 		},
 		// ===================================
+		{
+			test: "hooks: run the proper hook set on success",
+			yml: `
+tasks:
+  - name: foo
+    actions:
+      - echo foo
+    on_success:
+      - echo success
+    on_failure:
+      - echo failure
+`,
+			task:    "foo",
+			outputs: []string{"foo", "success"},
+		},
 	}
 
 	for _, kase := range kases {
@@ -227,4 +242,24 @@ tasks:
 	assert.NoError(t, f.Task("dir").Execute(f.Env(), log))
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "hello")
+}
+
+func Test_Orkfile_Task_Failure_Hook(t *testing.T) {
+	yml := `
+tasks:
+  - name: foo
+    actions:
+      - a_non_existent_program
+    on_success:
+      - echo success
+    on_failure:
+      - echo failure
+`
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml)))
+	log := NewMockLogger()
+
+	assert.Error(t, f.Task("foo").Execute(f.Env(), log))
+	require.Equal(t, 1, len(log.Outputs()))
+	assert.Contains(t, log.Outputs()[0], "failure")
 }
