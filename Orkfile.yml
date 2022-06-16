@@ -14,8 +14,6 @@ tasks:
 
   - name: test
     description: test the application
-    depends_on:
-      - build
     actions:
       - go test . -v -cover -count=1
 
