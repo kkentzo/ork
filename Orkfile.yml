@@ -19,6 +19,17 @@ tasks:
     actions:
       - go test . -v -count=1
 
+  - name: coverage
+    description: produce and display a test coverage report
+    env:
+      COV_OUT: cov.out
+      COV_HTML: cov.html
+    actions:
+      - go test -coverprofile=$COV_OUT .
+      - go tool cover -html=$COV_OUT -o $COV_HTML
+    on_success:
+      - open $COV_HTML
+
   - name: clean
     actions:
       - rm -rf bin
