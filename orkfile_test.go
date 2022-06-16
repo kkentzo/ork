@@ -31,20 +31,6 @@ tasks:
 		},
 		// ===================================
 		{
-			test: "default task",
-			yml: `
-global:
-  default: foo
-tasks:
-  - name: foo
-    actions:
-      - echo foo
-`,
-			task:    "foo",
-			outputs: []string{"foo\n"},
-		},
-		// ===================================
-		{
 			test: "uses global env",
 			yml: `
 global:
@@ -263,4 +249,44 @@ tasks:
 	require.Equal(t, 2, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "failure")
 	assert.Contains(t, log.Outputs()[1], "[foo] failed to start action: exec: a_non_existent_program: executable file not found")
+}
+
+func Test_Orkfile_Task_Does_Not_Exist(t *testing.T) {
+	f := New()
+	assert.NoError(t, f.Parse([]byte("")))
+	assert.ErrorContains(t, f.Run("foo", nil), "does not exist")
+}
+
+func Test_Orkfile_RunDefaultTask(t *testing.T) {
+	yml := `
+global:
+  default: foo
+tasks:
+  - name: foo
+    actions:
+      - echo foo
+`
+
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml)))
+	log := NewMockLogger()
+
+	assert.NoError(t, f.RunDefault(log))
+	require.Equal(t, 1, len(log.Outputs()))
+	assert.Contains(t, log.Outputs()[0], "foo")
+}
+
+func Test_Orkfile_ListAllTasks(t *testing.T) {
+	yml := `
+tasks:
+  - name: foo
+  - name: bar
+  - name: baz
+`
+
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml)))
+
+	tasks := f.AllTasks()
+	assert.Equal(t, 3, len(tasks))
 }
