@@ -165,6 +165,38 @@ tasks:
 	assert.ErrorContains(t, f.Run("foo", log), "cyclic dependency")
 }
 
+func Test_Orkfile_Dependency_DoesNotExist(t *testing.T) {
+	yml := `
+tasks:
+  - name: foo
+    depends_on:
+      - bar
+`
+
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml)))
+	log := NewMockLogger()
+	assert.ErrorContains(t, f.Run("foo", log), "dependency bar does not exist")
+}
+
+func Test_Orkfile_Task_Info(t *testing.T) {
+	yml := `
+tasks:
+  - name: foo
+    description: I am foo
+`
+
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml)))
+	assert.Equal(t, "[foo] I am foo", f.Info("foo"))
+}
+
+func Test_Orkfile_Task_Info_When_Task_DoesNot_Exist(t *testing.T) {
+	f := New()
+	assert.NoError(t, f.Parse([]byte("")))
+	assert.Empty(t, f.Info("foo"))
+}
+
 func Test_Orkfile_GlobalEnv_OverridenByLocalEnv_PerTask(t *testing.T) {
 	yml := `
 global:
@@ -206,6 +238,11 @@ tasks:
 
 	f := New()
 	assert.ErrorContains(t, f.Parse([]byte(yml)), "duplicate task")
+}
+
+func Test_Orkfile_Parse_On_Malformed_YML(t *testing.T) {
+	invalid_yml := "global: foo"
+	assert.Error(t, New().Parse([]byte(invalid_yml)))
 }
 
 func Test_Orkfile_Supports_Env_Ordering(t *testing.T) {
@@ -306,6 +343,13 @@ tasks:
 	assert.Contains(t, log.Outputs()[0], "foo")
 }
 
+func Test_Orkfile_RunDefaultTask_When_Task_DoesNot_Exist(t *testing.T) {
+	f := New()
+	assert.NoError(t, f.Parse([]byte("")))
+
+	assert.ErrorContains(t, f.RunDefault(nil), "default task")
+}
+
 func Test_Orkfile_ListAllTasks(t *testing.T) {
 	yml := `
 tasks:
@@ -319,4 +363,15 @@ tasks:
 
 	tasks := f.AllTasks()
 	assert.Equal(t, 3, len(tasks))
+}
+
+func Test_Read(t *testing.T) {
+	contents, err := Read("Orkfile.yml")
+	assert.NoError(t, err)
+	assert.NoError(t, New().Parse(contents))
+}
+
+func Test_Read_When_File_DoesNot_Exist(t *testing.T) {
+	_, err := Read("this_file_does_not_exist")
+	assert.Error(t, err)
 }

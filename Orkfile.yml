@@ -17,7 +17,7 @@ tasks:
     depends_on:
       - build
     actions:
-      - go test . -v -count=1
+      - go test . -v -cover -count=1
 
   - name: coverage
     description: produce and display a test coverage report
