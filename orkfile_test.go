@@ -112,10 +112,8 @@ tasks:
 		// parse orkfile
 		f := New()
 		require.NoError(t, f.Parse([]byte(kase.yml)), kase.test)
-		// find and execute task
-		task := f.Task(kase.task)
-		require.NotNil(t, task, kase.test)
-		assert.NoError(t, task.Execute(f.Env(), log), kase.test)
+		// execute task
+		assert.NoError(t, f.Run(kase.task, log), kase.test)
 		// check expected outputs
 		outputs := log.Outputs()
 		require.Equal(t, len(kase.outputs), len(outputs), kase.test)
@@ -148,7 +146,7 @@ tasks:
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
-	assert.ErrorContains(t, f.Task("foo").Execute(f.Env(), log), "cyclic dependency")
+	assert.ErrorContains(t, f.Run("foo", log), "cyclic dependency")
 }
 
 func Test_Orkfile_GlobalEnv_OverridenByLocalEnv_PerTask(t *testing.T) {
@@ -170,8 +168,8 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
-	assert.NoError(t, f.Task("bar").Execute(f.Env(), log))
-	assert.NoError(t, f.Task("foo").Execute(f.Env(), log))
+	assert.NoError(t, f.Run("bar", log))
+	assert.NoError(t, f.Run("foo", log))
 
 	outputs := log.Outputs()
 	require.Equal(t, 2, len(outputs))
@@ -218,7 +216,7 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
-	assert.NoError(t, f.Task("env_ordering").Execute(f.Env(), log))
+	assert.NoError(t, f.Run("env_ordering", log))
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], target_val)
 }
@@ -239,7 +237,7 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
-	assert.NoError(t, f.Task("dir").Execute(f.Env(), log))
+	assert.NoError(t, f.Run("dir", log))
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "hello")
 }
@@ -260,7 +258,7 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
-	assert.Error(t, f.Task("foo").Execute(f.Env(), log))
+	assert.Error(t, f.Run("foo", log))
 
 	require.Equal(t, 2, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "failure")

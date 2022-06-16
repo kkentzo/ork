@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -20,20 +19,6 @@ OPTIONS:
    {{range .VisibleFlags}}{{.}}
    {{end}}
 `
-}
-
-func lookupTasks(orkfile *Orkfile, labels []string) ([]*Task, error) {
-	// ok, we're not in the default task case
-	// lookup all tasks
-	tasks := make([]*Task, 0, len(labels))
-	for _, label := range labels {
-		if task := orkfile.Task(label); task != nil {
-			tasks = append(tasks, task)
-		} else {
-			return tasks, fmt.Errorf("task %s not found in Orkfile", label)
-		}
-	}
-	return tasks, nil
 }
 
 func main() {
@@ -95,26 +80,16 @@ func main() {
 						fmt.Println(task.Info())
 					}
 				} else {
-					if task := orkfile.DefaultTask(); task != nil {
-						return task.Execute(orkfile.Env(), logger)
-					} else {
-						return errors.New("no default task was defined in Orkfile")
-					}
+					return orkfile.RunDefault(logger)
 				}
 				return nil
 			}
 
-			// lookup the requested tasks
-			tasks, err := lookupTasks(orkfile, labels)
-			if err != nil {
-				logger.Fatal(err.Error())
-			}
-
 			// act upon all tasks
-			for _, task := range tasks {
+			for _, label := range labels {
 				if c.Bool("info") {
-					fmt.Println(task.Info())
-				} else if err := task.Execute(orkfile.Env(), logger); err != nil {
+					fmt.Println(orkfile.Info(label))
+				} else if err := orkfile.Run(label, logger); err != nil {
 					log.Fatal(err.Error())
 				}
 			}

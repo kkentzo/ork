@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 
@@ -16,22 +17,11 @@ type Global struct {
 	Env     Env    `yaml:"env"`
 }
 
-type OrkfileTask struct {
-	Name        string   `yaml:"name"`
-	Description string   `yaml:"description"`
-	WorkingDir  string   `yaml:"working_dir"`
-	Env         Env      `yaml:"env"`
-	Actions     []string `yaml:"actions"`
-	DependsOn   []string `yaml:"depends_on"`
-	OnSuccess   []string `yaml:"on_success"`
-	OnFailure   []string `yaml:"on_failure"`
-}
-
 type Orkfile struct {
-	Global Global        `yaml:"global"`
-	Tasks  []OrkfileTask `yaml:"tasks"`
+	Global Global  `yaml:"global"`
+	Tasks  []*Task `yaml:"tasks"`
 
-	tasks map[string]*Task
+	inventory Inventory
 }
 
 func Read(path string) (contents []byte, err error) {
@@ -44,49 +34,55 @@ func Read(path string) (contents []byte, err error) {
 
 func New() *Orkfile { return &Orkfile{} }
 
+// parse the orkfile and populate the task inventory
 func (f *Orkfile) Parse(contents []byte) error {
-	f.tasks = map[string]*Task{}
 	if err := yaml.Unmarshal(contents, f); err != nil {
 		return err
 	}
 
-	// create all tasks
+	// populate the task inventory
+	f.inventory = Inventory{}
 	for _, t := range f.Tasks {
-		if _, ok := f.tasks[t.Name]; ok {
-			return fmt.Errorf("duplicate task: %s", t.Name)
-		}
-		f.tasks[t.Name] = NewTask(t)
-	}
-	// create task dependencies
-	for _, t := range f.Tasks {
-		task := f.tasks[t.Name]
-		for _, d := range t.DependsOn {
-			if dtask, ok := f.tasks[d]; ok {
-				task.AddDependency(dtask)
-			} else {
-				return fmt.Errorf("task %s (dependency of task %s) does not exist", d, t.Name)
-			}
+		if err := f.inventory.Add(t); err != nil {
+			return err
 		}
 	}
-
 	return nil
 }
 
-func (f *Orkfile) AllTasks() []*Task {
-	tasks := make([]*Task, 0, len(f.tasks))
-	for _, task := range f.tasks {
-		tasks = append(tasks, task)
+// run the requested task
+func (f *Orkfile) Run(label string, logger Logger) error {
+	task := f.inventory.Find(label)
+	if task == nil {
+		return fmt.Errorf("task %s does not exist", label)
 	}
-	return tasks
+	return task.Execute(f.Env(), f.inventory, logger)
 }
 
-func (f *Orkfile) Task(label string) *Task {
-	return f.tasks[label]
+// run the default task (if any)
+func (f *Orkfile) RunDefault(logger Logger) error {
+	task := f.DefaultTask()
+	if task == nil {
+		return errors.New("default task has been requested but has not been set")
+	}
+	return task.Execute(f.Env(), f.inventory, logger)
+}
+
+// return info for the requested task
+func (f *Orkfile) Info(label string) (info string) {
+	if task := f.inventory.Find(label); task != nil {
+		info = task.Info()
+	}
+	return
+}
+
+func (f *Orkfile) AllTasks() []*Task {
+	return f.inventory.All()
 }
 
 // return the default task or nil if it does not exist
 func (f *Orkfile) DefaultTask() *Task {
-	return f.tasks[f.Global.Default]
+	return f.inventory.Find(f.Global.Default)
 }
 
 func (f *Orkfile) Env() Env {
