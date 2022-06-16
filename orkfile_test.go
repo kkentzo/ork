@@ -91,9 +91,39 @@ tasks:
 			task:    "foo",
 			outputs: []string{"foo", "success"},
 		},
+		// ===================================
+		{
+			test: "task groups with default separator",
+			yml: `
+tasks:
+  - name: foo
+    env:
+      MY_VAR: foo
+    actions:
+      - echo $MY_VAR
+    tasks:
+      - name: bar
+        env:
+          MY_VAR: bar
+        actions:
+          - echo $MY_VAR
+        on_success:
+          - echo success
+        on_failure:
+          - echo failure
+`,
+			task:    fmt.Sprintf("foo%sbar", DEFAULT_TASK_GROUP_SEP),
+			outputs: []string{"foo", "bar", "success"},
+		},
 	}
 
+	// set this to a kase.test value to run one test only
+	only_kase := ""
+
 	for _, kase := range kases {
+		if only_kase != "" && only_kase != only_kase {
+			continue
+		}
 		log := NewMockLogger()
 		// parse orkfile
 		f := New()

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -42,12 +43,7 @@ func (f *Orkfile) Parse(contents []byte) error {
 
 	// populate the task inventory
 	f.inventory = Inventory{}
-	for _, t := range f.Tasks {
-		if err := f.inventory.Add(t); err != nil {
-			return err
-		}
-	}
-	return nil
+	return f.inventory.Populate(f.Tasks)
 }
 
 // run the requested task
@@ -56,16 +52,22 @@ func (f *Orkfile) Run(label string, logger Logger) error {
 	if task == nil {
 		return fmt.Errorf("task %s does not exist", label)
 	}
+	tokens := strings.Split(label, DEFAULT_TASK_GROUP_SEP)
+	precedingTask := strings.Join(tokens[0:len(tokens)-1], DEFAULT_TASK_GROUP_SEP)
+	if precedingTask != "" {
+		if err := f.Run(precedingTask, logger); err != nil {
+			return err
+		}
+	}
 	return task.Execute(f.Env(), f.inventory, logger)
 }
 
 // run the default task (if any)
 func (f *Orkfile) RunDefault(logger Logger) error {
-	task := f.DefaultTask()
-	if task == nil {
+	if f.Global.Default == "" {
 		return errors.New("default task has been requested but has not been set")
 	}
-	return task.Execute(f.Env(), f.inventory, logger)
+	return f.Run(f.Global.Default, logger)
 }
 
 // return info for the requested task
@@ -78,11 +80,6 @@ func (f *Orkfile) Info(label string) (info string) {
 
 func (f *Orkfile) AllTasks() []*Task {
 	return f.inventory.All()
-}
-
-// return the default task or nil if it does not exist
-func (f *Orkfile) DefaultTask() *Task {
-	return f.inventory.Find(f.Global.Default)
 }
 
 func (f *Orkfile) Env() Env {

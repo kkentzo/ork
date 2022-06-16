@@ -12,6 +12,7 @@ type Task struct {
 	Env         Env      `yaml:"env"`
 	Actions     []string `yaml:"actions"`
 	DependsOn   []string `yaml:"depends_on"`
+	Tasks       []*Task  `yaml:"tasks"`
 	OnSuccess   []string `yaml:"on_success"`
 	OnFailure   []string `yaml:"on_failure"`
 }
@@ -36,6 +37,7 @@ func (t *Task) Execute(env Env, inventory Inventory, logger Logger) error {
 func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[string]struct{}) (err error) {
 	// handle success/failure hooks
 	defer func() {
+		logger.Debugf("[%s] executing post-action hooks", t.Name)
 		var actions []string
 		if err == nil {
 			actions = t.OnSuccess
@@ -55,6 +57,8 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 
 	// mark task as visited
 	cdt[t.Name] = struct{}{}
+
+	logger.Debugf("[%s] executing dependencies", t.Name)
 
 	// first, execute all dependencies
 	for _, label := range t.DependsOn {
@@ -77,10 +81,15 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 		}
 	}
 
-	// now, execute all the task's actions
+	// create the proper environment
+	logger.Debugf("[%s] creating environment", t.Name)
+	env = env.Copy().Merge(t.Env)
+
+	// execute all the task's actions
+	logger.Debugf("[%s] executing actions", t.Name)
 	for idx, action := range t.Actions {
 		logger.Infof("[%s] %s", t.Name, t.Actions[idx])
-		if err = executeAction(action, env.Copy().Merge(t.Env), t.WorkingDir, logger); err != nil {
+		if err = executeAction(action, env, t.WorkingDir, logger); err != nil {
 			err = fmt.Errorf("[%s] %v", t.Name, err)
 			return
 		}
