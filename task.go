@@ -24,7 +24,7 @@ func (t *Task) Info() string {
 	} else {
 		desc = t.Description
 	}
-	return fmt.Sprintf("%s: %s", t.Name, desc)
+	return fmt.Sprintf("[%s] %s", t.Name, desc)
 }
 
 // execute the task
