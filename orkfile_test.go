@@ -244,7 +244,7 @@ tasks:
 	assert.Contains(t, log.Outputs()[0], "hello")
 }
 
-func Test_Orkfile_Task_Failure_Hook(t *testing.T) {
+func Test_Orkfile_Task_Failure_Hook_RunsOnError_And_Sets_ORK_ERROR(t *testing.T) {
 	yml := `
 tasks:
   - name: foo
@@ -254,12 +254,15 @@ tasks:
       - echo success
     on_failure:
       - echo failure
+      - echo $ORK_ERROR
 `
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
 	assert.Error(t, f.Task("foo").Execute(f.Env(), log))
-	require.Equal(t, 1, len(log.Outputs()))
+
+	require.Equal(t, 2, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "failure")
+	assert.Contains(t, log.Outputs()[1], "[foo] failed to start action: exec: a_non_existent_program: executable file not found")
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 )
 
 type Task struct {
@@ -56,6 +57,10 @@ func (t *Task) execute(env Env, logger Logger, cdt map[string]struct{}) (err err
 		if err == nil {
 			actions = t.onSuccess
 		} else {
+			// set the ORK_ERROR env variable
+			if os.Setenv("ORK_ERROR", err.Error()) != nil {
+				logger.Errorf("[%s] failed to set the ORK_ERROR environment variable", t.name)
+			}
 			actions = t.onFailure
 		}
 		for _, a := range actions {
