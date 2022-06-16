@@ -6,10 +6,10 @@
 `ork` is a program to organize, compose and execute command workflows
 in software projects.
 
-It is meant as a light-weight substitute to the venerable `Makefile`
-program and especially for `Makefile`s that make heavy use of `.PHONY`
-targets (i.e. `Makefile`s that focus on operational tasks rather than
-files).
+It is meant as a modern, light-weight substitute to the venerable
+`Makefile` program and especially for `Makefile`s that make heavy use
+of `.PHONY` targets (i.e. `Makefile`s that focus on operational tasks
+rather than files).
 
 `ork` is simple and mostly inspired by the workflow syntax of
 [Github](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions)
@@ -22,8 +22,10 @@ CI products.
 
 `ork` organizes workflows in yaml format (`Orkfile.yml`) as a
 collection of tasks, each consisting of a sequence of actions that are
-executed independently of each other (i.e. in separate processes). For
-example:
+executed independently of each other (i.e. in separate processes). If
+an action results in an error, then the chain stops.
+
+Here's an example:
 
 ```yaml
 global:
@@ -54,12 +56,53 @@ tasks:
       - python -c "import sys; sys.stdout.write('hello from python')"
 ```
 
+A task can also contain an arbitrary number of nested tasks for
+grouping together related functionalities, for example:
+
+```yaml
+tasks:
+  - name: db
+    description: task group for various database-related actions
+    env:
+      DB_CONN: "postgres://..."
+    tasks:
+      - name: migrate
+        actions:
+          # commands for applying database migrations
+      - name: rollback
+        actions:
+          # commands for applying database migrations
+      ...
+```
+
+The above configuration will generate three tasks: `db`, `db/migrate`
+and `db/rollback`. Note that the parent task (`db`) is still
+considered a task whose environment, actions, hooks etc. will be
+executed before its children (so that the parent task can be used for
+setting up the children tasks).
+
 ### Global configuration
 
 As seen above, Orkfiles can also have a global section for setting up
-properties for all tasks (that, nevertheless, can still be overriden
-by individual tasks) such as environment variables, the default task
-etc.
+properties for all tasks such as environment variables, the default
+task etc. Global environment variables are overriden by local
+(task-specific) ones, e.g.:
+
+```yaml
+global:
+  env:
+    VAR: bar
+
+  tasks:
+    - name: foo
+      env:
+        VAR: foo
+      actions:
+        - echo $VAR
+```
+
+In this case, `ork foo` will output `foo` (the task-local version of
+`$VAR`).
 
 ### Environment Variables
 
@@ -78,6 +121,10 @@ tasks:
 
 The output of running `ork foobar` on the above Orkfile will be
 `foo-bar`.
+
+Environment variables are sorted using lexicographical ordering so as
+to ensure that they are applied in the task's environment
+deterministically.
 
 ### Task dependencies
 
@@ -105,6 +152,46 @@ tasks:
     actions:
       - ...
 ```
+
+### Task Success/Error Hooks
+
+Orkfiles support post-action hooks for individual tasks, e.g.:
+
+```yaml
+tasks:
+  - name: deploy
+    env:
+      RELEASE_TAG: release/$[date '+%Y-%m-%dT%H-%M-%S']
+    actions:
+      - ...
+    on_success:
+      - git tag -a $RELEASE_TAG -m "$RELEASE_TAG"
+    on_failure:
+      - curl -d '{"error":"$ORK_ERROR"}' -H "Content-Type: application/json" -X POST http://notifications.somewhere
+```
+
+The `on_success` action hooks will be executed only if the task action
+chain is executed successfully. In the event of an error,
+
+If all of the task's actions are completed without any errors, then
+the `on_success` actions are executed, otherwise the `on_failure`
+actions are executed with access to the `$ORK_ERROR` environment
+variable.
+
+### Working directory
+
+A task can specify its own working directory like so:
+
+```yaml
+tasks:
+  - name: deploy
+    working_dir: ./ansible
+    actions:
+      - ansible-playbook -i hosts app.yml
+```
+
+All the task's actions will have `./ansible` as their working
+directory.
 
 ## Installation & Usage
 
