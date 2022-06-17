@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 
 	"github.com/urfave/cli/v2"
 )
@@ -93,8 +94,12 @@ func main() {
 			// if no tasks are requested, then we need to work with the default task (if any)
 			if len(labels) == 0 {
 				if c.Bool("info") {
-					// print info for all tasks
-					for _, task := range orkfile.AllTasks() {
+					// get tasks and sort them by name
+					tasks := orkfile.AllTasks()
+					sort.Slice(tasks, func(i, j int) bool {
+						return tasks[i].Name < tasks[j].Name
+					})
+					for _, task := range tasks {
 						fmt.Println(task.Info())
 					}
 				} else {
