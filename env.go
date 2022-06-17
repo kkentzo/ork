@@ -53,7 +53,6 @@ func (this Env) Apply() error {
 
 			val += v
 		}
-
 		os.Setenv(kv.key, val)
 	}
 
@@ -108,7 +107,7 @@ func parseEnvTokens(statement string) []envToken {
 func (e envToken) expand() (out string, err error) {
 	if e.isAction {
 		buf := bytes.NewBuffer([]byte{})
-		action := NewAction(e.value, Env{}).WithStdout(buf).WithEnvExpansion(false)
+		action := NewAction(e.value).WithStdout(buf).WithEnvExpansion(false)
 		if err = action.Execute(); err != nil {
 			return
 		}

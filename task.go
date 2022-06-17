@@ -81,11 +81,13 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 		}
 	}
 
-	// create the proper environment
-	logger.Debugf("[%s] creating environment", t.Name)
-	env = env.Copy().Merge(t.Env)
+	// apply the environment
+	logger.Debugf("[%s] applying environment", t.Name)
+	if err = env.Copy().Merge(t.Env).Apply(); err != nil {
+		err = fmt.Errorf("[%s] failed to apply environment: %v", t.Name, err)
+	}
 
-	// execute all the task's actions
+	// execute all the task's actions (if any)
 	logger.Debugf("[%s] executing actions", t.Name)
 	for idx, action := range t.Actions {
 		logger.Infof("[%s] %s", t.Name, t.Actions[idx])
@@ -99,7 +101,7 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 }
 
 func executeAction(action string, env Env, chdir string, logger Logger) error {
-	a := NewAction(action, env).WithStdout(logger).WithWorkingDirectory(chdir)
+	a := NewAction(action).WithStdout(logger).WithWorkingDirectory(chdir)
 	if err := a.Execute(); err != nil {
 		return err
 	}

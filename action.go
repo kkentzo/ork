@@ -11,7 +11,6 @@ import (
 
 type Action struct {
 	statement string
-	env       Env
 	chdir     string
 	stdin     io.Reader
 	stdout    io.Writer
@@ -19,10 +18,9 @@ type Action struct {
 	expandEnv bool
 }
 
-func NewAction(statement string, env Env) *Action {
+func NewAction(statement string) *Action {
 	return &Action{
 		statement: statement,
-		env:       env,
 		stdin:     os.Stdin,
 		stdout:    os.Stdout,
 		expandEnv: true,
@@ -51,10 +49,6 @@ func (a *Action) WithWorkingDirectory(chdir string) *Action {
 
 func (a *Action) Execute() error {
 	// first, setup the environment
-	if err := a.env.Apply(); err != nil {
-		return fmt.Errorf("failed to apply environment: %v", err)
-	}
-
 	if a.expandEnv {
 		a.statement = os.ExpandEnv(a.statement)
 	}

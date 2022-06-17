@@ -50,13 +50,13 @@ tasks:
 			yml: `
 global:
   env:
-    MY_VAR: bar
+    MY_VAR_1: bar
 tasks:
   - name: foo
     env:
-      MY_VAR: foo
+      MY_VAR_1: foo
     actions:
-      - echo ${MY_VAR}
+      - echo ${MY_VAR_1}
 `,
 			task:    "foo",
 			outputs: []string{"foo\n"},
@@ -93,20 +93,36 @@ tasks:
 		},
 		// ===================================
 		{
-			test: "task groups with default separator",
+			test: "parent task's env is visible in nested task",
 			yml: `
 tasks:
   - name: foo
     env:
-      MY_VAR: foo
+      MY_VAR_2: foo
+    tasks:
+      - name: bar
+        actions:
+          - echo $MY_VAR_2
+`,
+			task:    fmt.Sprintf("foo%sbar", DEFAULT_TASK_GROUP_SEP),
+			outputs: []string{"foo"},
+		},
+		// ===================================
+		{
+			test: "nested task env overrides the parent's env",
+			yml: `
+tasks:
+  - name: foo
+    env:
+      MY_VAR_3: foo
     actions:
-      - echo $MY_VAR
+      - echo $MY_VAR_3
     tasks:
       - name: bar
         env:
-          MY_VAR: bar
+          MY_VAR_3: bar
         actions:
-          - echo $MY_VAR
+          - echo $MY_VAR_3
         on_success:
           - echo success
         on_failure:
@@ -121,7 +137,7 @@ tasks:
 	only_kase := ""
 
 	for _, kase := range kases {
-		if only_kase != "" && only_kase != only_kase {
+		if only_kase != "" && only_kase != kase.test {
 			continue
 		}
 		log := NewMockLogger()
@@ -130,6 +146,10 @@ tasks:
 		require.NoError(t, f.Parse([]byte(kase.yml)), kase.test)
 		// execute task
 		assert.NoError(t, f.Run(kase.task, log), kase.test)
+
+		// for _, ln := range log.Logs(logger.DebugLevel) {
+		// 	fmt.Println(ln)
+		// }
 		// check expected outputs
 		outputs := log.Outputs()
 		require.Equal(t, len(kase.outputs), len(outputs), kase.test)
