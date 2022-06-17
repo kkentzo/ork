@@ -26,6 +26,8 @@ func Test_Action_Execute(t *testing.T) {
 		{"echo $FOO", Env{"FOO": "$[echo foo]-$[echo bar]"}, "foo-bar\n"},
 		// nested command substitutions are executed properly
 		{"echo $FOO", Env{"FOO": "$[bash -c \"echo $(echo foo)\"]-$[echo bar]"}, "foo-bar\n"},
+		// complex bash scripts are executed properly
+		{`bash -c "if [ \"$A_VAR\" == \"i am foo\" ]; then echo $(echo \"yes, $A_VAR\"); else echo \"no, i am not foo\"; fi"`, Env{"A_VAR": "i am foo"}, "yes, i am foo\n"},
 	}
 
 	for idx, kase := range kases {
