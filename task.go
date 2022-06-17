@@ -9,7 +9,7 @@ type Task struct {
 	Name        string   `yaml:"name"`
 	Description string   `yaml:"description"`
 	WorkingDir  string   `yaml:"working_dir"`
-	Env         Env      `yaml:"env"`
+	Env         []Env    `yaml:"env"`
 	ExpandEnv   *bool    `yaml:"expand_env"`
 	Actions     []string `yaml:"actions"`
 	DependsOn   []string `yaml:"depends_on"`
@@ -29,13 +29,13 @@ func (t *Task) Info() string {
 }
 
 // execute the task
-func (t *Task) Execute(env Env, inventory Inventory, logger Logger) error {
+func (t *Task) Execute(env []Env, inventory Inventory, logger Logger) error {
 	return t.execute(env, inventory, logger, map[string]struct{}{})
 }
 
 // execute the task workflow
 // return the first encountered error (if any)
-func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[string]struct{}) (err error) {
+func (t *Task) execute(env []Env, inventory Inventory, logger Logger, cdt map[string]struct{}) (err error) {
 	// handle success/failure hooks
 	defer func() {
 		logger.Debugf("[%s] executing post-action hooks", t.Name)
@@ -50,7 +50,7 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 			actions = t.OnFailure
 		}
 		for _, a := range actions {
-			if err := executeAction(a, env, t.ExpandEnv, t.WorkingDir, logger); err != nil {
+			if err := executeAction(a, t.ExpandEnv, t.WorkingDir, logger); err != nil {
 				logger.Errorf("[%s] failed to execute hook: %v", err)
 			}
 		}
@@ -82,21 +82,28 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 	}
 
 	// apply the environment
-	logger.Debugf("[%s] applying environment", t.Name)
+	logger.Debugf("[%s] applying outer environment", t.Name)
 	// first, the outer env
-	if err = env.Apply(); err != nil {
-		err = fmt.Errorf("[%s] failed to apply environment: %v", t.Name, err)
+	for _, e := range env {
+		if err = e.Apply(); err != nil {
+			err = fmt.Errorf("[%s] failed to apply environment: %v", t.Name, err)
+			return
+		}
 	}
 	// now, the current env
-	if err = t.Env.Apply(); err != nil {
-		err = fmt.Errorf("[%s] failed to apply environment: %v", t.Name, err)
+	logger.Debugf("[%s] applying task environment", t.Name)
+	for _, e := range t.Env {
+		if err = e.Apply(); err != nil {
+			err = fmt.Errorf("[%s] failed to apply environment: %v", t.Name, err)
+			return
+		}
 	}
 
 	// execute all the task's actions (if any)
 	logger.Debugf("[%s] executing actions", t.Name)
 	for idx, action := range t.Actions {
 		logger.Infof("[%s] %s", t.Name, t.Actions[idx])
-		if err = executeAction(action, env, t.ExpandEnv, t.WorkingDir, logger); err != nil {
+		if err = executeAction(action, t.ExpandEnv, t.WorkingDir, logger); err != nil {
 			err = fmt.Errorf("[%s] %v", t.Name, err)
 			return
 		}
@@ -105,7 +112,7 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 	return
 }
 
-func executeAction(action string, env Env, expandEnv *bool, chdir string, logger Logger) error {
+func executeAction(action string, expandEnv *bool, chdir string, logger Logger) error {
 	ee := true
 	if expandEnv != nil {
 		ee = *expandEnv

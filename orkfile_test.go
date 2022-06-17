@@ -35,7 +35,7 @@ tasks:
 			yml: `
 global:
   env:
-    GLOBAL_ENV: foo
+    - GLOBAL_ENV: foo
 tasks:
   - name: foo
     actions:
@@ -50,11 +50,11 @@ tasks:
 			yml: `
 global:
   env:
-    MY_VAR_1: bar
+    - MY_VAR_1: bar
 tasks:
   - name: foo
     env:
-      MY_VAR_1: foo
+      - MY_VAR_1: foo
     actions:
       - echo ${MY_VAR_1}
 `,
@@ -68,7 +68,7 @@ tasks:
 tasks:
   - name: foo
     env:
-      TASK: $[echo clean] $[echo clean]
+      - TASK: $[echo clean] $[echo clean]
     actions:
       - go run . $TASK
 `,
@@ -98,7 +98,7 @@ tasks:
 tasks:
   - name: foo
     env:
-      MY_VAR_2: foo
+      - MY_VAR_2: foo
     tasks:
       - name: bar
         actions:
@@ -114,13 +114,13 @@ tasks:
 tasks:
   - name: foo
     env:
-      MY_VAR_3: foo
+      - MY_VAR_3: foo
     actions:
       - echo $MY_VAR_3
     tasks:
       - name: bar
         env:
-          MY_VAR_3: bar
+          - MY_VAR_3: bar
         actions:
           - echo $MY_VAR_3
         on_success:
@@ -137,11 +137,11 @@ tasks:
 			yml: `
 global:
   env:
-    MY_VAR_5: bar
+    - MY_VAR_5: bar
 tasks:
   - name: foo
     env:
-      MY_VAR_4: $[bash -c "echo $MY_VAR_5"]
+      - MY_VAR_4: $[bash -c "echo $MY_VAR_5"]
     actions:
       - echo $MY_VAR_4
 `,
@@ -162,6 +162,22 @@ tasks:
 `,
 			task:    "foo",
 			outputs: []string{"main.go"},
+		},
+		// ===================================
+		{
+			test: "env groups can see variables from the previous group",
+			yml: `
+global:
+tasks:
+  - name: foo
+    env:
+      - A: a
+      - B: $[bash -c "echo $A"]
+    actions:
+      - echo $B
+`,
+			task:    "foo",
+			outputs: []string{"a"},
 		},
 	}
 
@@ -253,11 +269,11 @@ func Test_Orkfile_GlobalEnv_OverridenByLocalEnv_PerTask(t *testing.T) {
 	yml := `
 global:
   env:
-    FOO: foo
+    - FOO: foo
 tasks:
   - name: bar
     env:
-      FOO: bar
+      - FOO: bar
     actions:
       - echo $FOO
   - name: foo
@@ -297,12 +313,12 @@ func Test_Orkfile_Parse_On_Malformed_YML(t *testing.T) {
 	assert.Error(t, New().Parse([]byte(invalid_yml)))
 }
 
-func Test_Orkfile_Supports_Env_Ordering(t *testing.T) {
+func Test_Orkfile_Supports_Sequential_Env_Groups(t *testing.T) {
 	env_items := ""
 	template_val := ""
 	target_val := ""
 	for i := 0; i <= 20; i++ {
-		env_items += fmt.Sprintf("      VAR_%.2d: %d\n", i, i)
+		env_items += fmt.Sprintf("      - VAR_%.2d: %d\n", i, i)
 		template_val += fmt.Sprintf("$VAR_%.2d", i)
 		target_val += fmt.Sprint(i)
 	}
@@ -311,11 +327,11 @@ func Test_Orkfile_Supports_Env_Ordering(t *testing.T) {
 tasks:
   - name: env_ordering
     env:
-      W_VAR: %s
 %s
+      - W_VAR: $[bash -c "echo %s"]
     actions:
-      - bash -c "echo $W_VAR"
-`, template_val, env_items)
+      - echo $W_VAR
+`, env_items, template_val)
 
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))

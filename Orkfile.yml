@@ -5,10 +5,10 @@ tasks:
   - name: build
     description: build the application
     env:
-      GOOS: linux
-      GOARCH: amd64
-      GO_BUILD: go build
-      GO_TARGET: bin/ork
+      - GOOS: linux
+        GOARCH: amd64
+        GO_BUILD: go build
+        GO_TARGET: bin/ork
     actions:
       - $GO_BUILD -o $GO_TARGET
 
@@ -20,8 +20,8 @@ tasks:
   - name: coverage
     description: produce and display a test coverage report
     env:
-      COV_OUT: cov.out
-      COV_HTML: cov.html
+      - COV_OUT: cov.out
+        COV_HTML: cov.html
     actions:
       - go test -coverprofile=$COV_OUT .
       - go tool cover -html=$COV_OUT -o $COV_HTML

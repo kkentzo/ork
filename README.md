@@ -31,16 +31,16 @@ Here's an example:
 global:
   default: build
   env:
-    GO_BUILD: go -ldflags="-s -w"
+    - GO_BUILD: go -ldflags="-s -w"
 
 tasks:
 
   - name: build
     description: build the application
     env:
-      GOOS: linux
-      GOARCH: amd64
-      GO_TARGET: bin/foo
+      - GOOS: linux
+        GOARCH: amd64
+        GO_TARGET: bin/foo
     actions:
       - $GO_BUILD -o $GO_TARGET
 
@@ -64,7 +64,7 @@ tasks:
   - name: db
     description: task group for various database-related actions
     env:
-      DB_CONN: "postgres://..."
+      - DB_CONN: "postgres://..."
     tasks:
       - name: migrate
         actions:
@@ -91,12 +91,12 @@ task etc. Global environment variables are overriden by local
 ```yaml
 global:
   env:
-    VAR: bar
+    - VAR: bar
 
   tasks:
     - name: foo
       env:
-        VAR: foo
+        - VAR: foo
       actions:
         - echo $VAR
 ```
@@ -114,7 +114,7 @@ tasks:
 
   - name: foobar
     env:
-      VAR: $[echo foo]-$[echo bar]
+      - VAR: $[echo foo]-$[echo bar]
     actions:
       - echo $VAR
 ```
@@ -122,9 +122,19 @@ tasks:
 The output of running `ork foobar` on the above Orkfile will be
 `foo-bar`.
 
-Environment variables are sorted using lexicographical ordering so as
-to ensure that they are applied in the task's environment
-deterministically.
+Environment variables can be defined in different groups so that each
+group can utilize values from the previous group. The following
+example will output `a`:
+
+```yaml
+tasks:
+  - name: foo
+    env:
+      - A: a
+      - B: $[bash -c "echo $a"]
+    actions:
+      - echo $B
+```
 
 Environment variables are expanded before the action is actually
 executed. In the example above, this means that `$VAR` will be
@@ -181,7 +191,7 @@ Orkfiles support post-action hooks for individual tasks, e.g.:
 tasks:
   - name: deploy
     env:
-      RELEASE_TAG: release/$[date '+%Y-%m-%dT%H-%M-%S']
+      - RELEASE_TAG: release/$[date '+%Y-%m-%dT%H-%M-%S']
     actions:
       - ...
     on_success:

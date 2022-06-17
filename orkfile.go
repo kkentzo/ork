@@ -15,7 +15,7 @@ const (
 
 type Global struct {
 	Default string `yaml:"default"`
-	Env     Env    `yaml:"env"`
+	Env     []Env  `yaml:"env"`
 }
 
 type Orkfile struct {
@@ -82,6 +82,6 @@ func (f *Orkfile) AllTasks() []*Task {
 	return f.inventory.All()
 }
 
-func (f *Orkfile) Env() Env {
+func (f *Orkfile) Env() []Env {
 	return f.Global.Env
 }
