@@ -10,6 +10,7 @@ type Task struct {
 	Description string   `yaml:"description"`
 	WorkingDir  string   `yaml:"working_dir"`
 	Env         Env      `yaml:"env"`
+	ExpandEnv   *bool    `yaml:"expand_env"`
 	Actions     []string `yaml:"actions"`
 	DependsOn   []string `yaml:"depends_on"`
 	Tasks       []*Task  `yaml:"tasks"`
@@ -49,7 +50,7 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 			actions = t.OnFailure
 		}
 		for _, a := range actions {
-			if err := executeAction(a, env, t.WorkingDir, logger); err != nil {
+			if err := executeAction(a, env, t.ExpandEnv, t.WorkingDir, logger); err != nil {
 				logger.Errorf("[%s] failed to execute hook: %v", err)
 			}
 		}
@@ -95,7 +96,7 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 	logger.Debugf("[%s] executing actions", t.Name)
 	for idx, action := range t.Actions {
 		logger.Infof("[%s] %s", t.Name, t.Actions[idx])
-		if err = executeAction(action, env, t.WorkingDir, logger); err != nil {
+		if err = executeAction(action, env, t.ExpandEnv, t.WorkingDir, logger); err != nil {
 			err = fmt.Errorf("[%s] %v", t.Name, err)
 			return
 		}
@@ -104,8 +105,12 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 	return
 }
 
-func executeAction(action string, env Env, chdir string, logger Logger) error {
-	a := NewAction(action).WithStdout(logger).WithWorkingDirectory(chdir)
+func executeAction(action string, env Env, expandEnv *bool, chdir string, logger Logger) error {
+	ee := true
+	if expandEnv != nil {
+		ee = *expandEnv
+	}
+	a := NewAction(action).WithStdout(logger).WithWorkingDirectory(chdir).WithEnvExpansion(ee)
 	if err := a.Execute(); err != nil {
 		return err
 	}

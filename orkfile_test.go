@@ -39,7 +39,7 @@ global:
 tasks:
   - name: foo
     actions:
-      - echo ${GLOBAL_ENV}
+      - echo $GLOBAL_ENV
 `,
 			task:    "foo",
 			outputs: []string{"foo\n"},
@@ -147,6 +147,21 @@ tasks:
 `,
 			task:    "foo",
 			outputs: []string{"bar"},
+		},
+
+		// ===================================
+		{
+			test: "env expansion can be disabled",
+			yml: `
+global:
+tasks:
+  - name: foo
+    expand_env: false
+    actions:
+      - bash -c "for f in $(ls -1 main.go); do echo $f; done;"
+`,
+			task:    "foo",
+			outputs: []string{"main.go"},
 		},
 	}
 

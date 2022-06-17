@@ -126,6 +126,26 @@ Environment variables are sorted using lexicographical ordering so as
 to ensure that they are applied in the task's environment
 deterministically.
 
+Environment variables are expanded before the action is actually
+executed. In the example above, this means that `$VAR` will be
+replaced by its value `foo-bar`, so the action that will be executed
+will be `echo foo-bar`. This behaviour can be disabled (using
+`expand_env: false` in task) so that actions that set their own
+variables can be correctly executed like in the following example:
+
+```yaml
+tasks:
+  - name: foo
+    expand_env: false
+    actions:
+      - bash -c "for f in $(ls -1 db/seeds/*.sql); do echo $f; done; "
+```
+
+If `expand_env` was true (the default behaviour), then the token `$f`
+would be substituted with an empty string before the action was
+executed and we would not receive the expected output from the
+command.
+
 ### Task dependencies
 
 `ork` also supports task dependencies (with cyclic dependency
