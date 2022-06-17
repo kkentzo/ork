@@ -131,6 +131,23 @@ tasks:
 			task:    fmt.Sprintf("foo%sbar", DEFAULT_TASK_GROUP_SEP),
 			outputs: []string{"foo", "bar", "success"},
 		},
+		// ===================================
+		{
+			test: "outer env variables are available in inner tasks regardless of lex order",
+			yml: `
+global:
+  env:
+    MY_VAR_5: bar
+tasks:
+  - name: foo
+    env:
+      MY_VAR_4: $[bash -c "echo $MY_VAR_5"]
+    actions:
+      - echo $MY_VAR_4
+`,
+			task:    "foo",
+			outputs: []string{"bar"},
+		},
 	}
 
 	// set this to a kase.test value to run one test only

@@ -9,19 +9,11 @@ import (
 	"strings"
 )
 
+// `Env` maps are **not** to be mutated once constructed
 type Env map[string]string
 
-// create and return a copy of `this`
-func (this Env) Copy() Env {
-	new := Env{}
-	// first set all of `this`
-	for k, v := range this {
-		new[k] = v
-	}
-	return new
-}
-
 // apply all the entries of `this` to the actual environment
+// does not mutate `this` in any way
 // all env values will be parsed to detect substitution patterns $[...]
 // which will be executed as actions whose output will be interpolated in the env value
 func (this Env) Apply() error {
@@ -57,14 +49,6 @@ func (this Env) Apply() error {
 	}
 
 	return nil
-}
-
-// add all the entries of `other` to `this` by overriding them if already present
-func (this Env) Merge(other Env) Env {
-	for k, v := range other {
-		this[k] = v
-	}
-	return this
 }
 
 // this represents a portion of an environment variable's value

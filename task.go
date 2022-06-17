@@ -49,7 +49,7 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 			actions = t.OnFailure
 		}
 		for _, a := range actions {
-			if err := executeAction(a, env.Copy(), t.WorkingDir, logger); err != nil {
+			if err := executeAction(a, env, t.WorkingDir, logger); err != nil {
 				logger.Errorf("[%s] failed to execute hook: %v", err)
 			}
 		}
@@ -58,9 +58,8 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 	// mark task as visited
 	cdt[t.Name] = struct{}{}
 
-	logger.Debugf("[%s] executing dependencies", t.Name)
-
 	// first, execute all dependencies
+	logger.Debugf("[%s] executing dependencies", t.Name)
 	for _, label := range t.DependsOn {
 		// find the dependency -- does it exist?
 		dep := inventory.Find(label)
@@ -83,7 +82,12 @@ func (t *Task) execute(env Env, inventory Inventory, logger Logger, cdt map[stri
 
 	// apply the environment
 	logger.Debugf("[%s] applying environment", t.Name)
-	if err = env.Copy().Merge(t.Env).Apply(); err != nil {
+	// first, the outer env
+	if err = env.Apply(); err != nil {
+		err = fmt.Errorf("[%s] failed to apply environment: %v", t.Name, err)
+	}
+	// now, the current env
+	if err = t.Env.Apply(); err != nil {
 		err = fmt.Errorf("[%s] failed to apply environment: %v", t.Name, err)
 	}
 
