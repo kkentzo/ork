@@ -50,7 +50,7 @@ A task can contain any kind of executable actions, e.g.:
 
 ```yaml
 tasks:
-  - name: say-hello
+  - name: say/hello
     description: Say hello from python
     actions:
       - python -c "import sys; sys.stdout.write('hello from python')"
@@ -75,8 +75,8 @@ tasks:
       ...
 ```
 
-The above configuration will generate three tasks: `db`, `db/migrate`
-and `db/rollback`. Note that the parent task (`db`) is still
+The above configuration will generate three tasks: `db`, `db.migrate`
+and `db.rollback`. Note that the parent task (`db`) is still
 considered a task whose environment, actions, hooks etc. will be
 executed before its children (so that the parent task can be used for
 setting up the children tasks).

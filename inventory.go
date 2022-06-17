@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-const DEFAULT_TASK_GROUP_SEP = "/"
+const DEFAULT_TASK_GROUP_SEP = "."
 
 type Inventory map[string]*Task
 
