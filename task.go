@@ -7,6 +7,7 @@ import (
 
 type Task struct {
 	Name        string   `yaml:"name"`
+	Default     string   `yaml:"default"` // used in the global task
 	Description string   `yaml:"description"`
 	WorkingDir  string   `yaml:"working_dir"`
 	Env         []Env    `yaml:"env"`
@@ -29,13 +30,13 @@ func (t *Task) Info() string {
 }
 
 // execute the task
-func (t *Task) Execute(env []Env, inventory Inventory, logger Logger) error {
-	return t.execute(env, inventory, logger, map[string]struct{}{})
+func (t *Task) Execute(inventory Inventory, logger Logger) error {
+	return t.execute(inventory, logger, map[string]struct{}{})
 }
 
 // execute the task workflow
 // return the first encountered error (if any)
-func (t *Task) execute(env []Env, inventory Inventory, logger Logger, cdt map[string]struct{}) (err error) {
+func (t *Task) execute(inventory Inventory, logger Logger, cdt map[string]struct{}) (err error) {
 	// handle success/failure hooks
 	defer func() {
 		logger.Debugf("[%s] executing post-action hooks", t.Name)
@@ -76,21 +77,12 @@ func (t *Task) execute(env []Env, inventory Inventory, logger Logger, cdt map[st
 		}
 
 		// ok, let's run it
-		if err = dep.execute(env, inventory, logger, cdt); err != nil {
+		if err = dep.execute(inventory, logger, cdt); err != nil {
 			return
 		}
 	}
 
 	// apply the environment
-	logger.Debugf("[%s] applying outer environment", t.Name)
-	// first, the outer env
-	for _, e := range env {
-		if err = e.Apply(); err != nil {
-			err = fmt.Errorf("[%s] failed to apply environment: %v", t.Name, err)
-			return
-		}
-	}
-	// now, the current env
 	logger.Debugf("[%s] applying task environment", t.Name)
 	for _, e := range t.Env {
 		if err = e.Apply(); err != nil {

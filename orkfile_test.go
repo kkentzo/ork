@@ -77,6 +77,20 @@ tasks:
 		},
 		// ===================================
 		{
+			test: "multiple command substitution in env",
+			yml: `
+tasks:
+  - name: foo
+    env:
+      - FOO: $[echo foo]-$[echo bar]
+    actions:
+      - echo $FOO
+`,
+			task:    "foo",
+			outputs: []string{"foo-bar"},
+		},
+		// ===================================
+		{
 			test: "hooks: run the proper hook set on success",
 			yml: `
 tasks:
