@@ -85,8 +85,8 @@ setting up the children tasks).
 
 As seen above, Orkfiles can also have a global section for setting up
 properties for all tasks such as environment variables, the default
-task etc. Global environment variables are overriden by local
-(task-specific) ones, e.g.:
+task (using `default`) etc. Global environment variables are overriden
+by local (task-specific) ones, e.g.:
 
 ```yaml
 global:
@@ -103,6 +103,9 @@ global:
 
 In this case, `ork foo` will output `foo` (the task-local version of
 `$VAR`).
+
+The global section is also a task in itself, so it can have its own
+`actions`, hooks etc. These will be executed before anything else.
 
 ### Environment Variables
 
