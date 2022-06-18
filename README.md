@@ -156,6 +156,17 @@ would be substituted with an empty string before the action was
 executed and we would not receive the expected output from the
 command.
 
+The matching of the substitution pattern `$[...]` can be problematic
+for statements like
+
+`$[bash -c "if [ \"${DEPLOY_ENV}\" == \"production\" ]; then echo production; else echo staging; fi"]`
+
+In this case, the opening `$[` will be matched in a non-greedy manner
+by the closing `]` of the bash `if` statement and the command will
+fail. `ork` exposes a task attribute called `env_subst_greedy`
+(default: false) which can be used to enforce the desired behaviour
+(in this case it must be set to true).
+
 ### Task dependencies
 
 `ork` also supports task dependencies (with cyclic dependency

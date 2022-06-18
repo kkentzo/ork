@@ -193,6 +193,36 @@ tasks:
 			task:    "foo",
 			outputs: []string{"a"},
 		},
+		// ===================================
+		{
+			test: "env can execute non-trivial bash statements",
+			yml: `
+global:
+  env:
+    - MY_VAR_6: production
+tasks:
+  - name: foo
+    env_subst_greedy: true
+    env:
+      - MY_VAR_7: $[bash -c "if [ \"${MY_VAR_6}\" == \"production\" ]; then echo production; else echo staging; fi"]
+    actions:
+      - echo $MY_VAR_7
+`,
+			task:    "foo",
+			outputs: []string{"production"},
+		},
+		// ===================================
+		{
+			test: "action can execute arbitrary commands",
+			yml: `
+tasks:
+  - name: foo
+    actions:
+      - python -c "import sys; sys.stdout.write('hello from python');"
+`,
+			task:    "foo",
+			outputs: []string{"hello from python"},
+		},
 	}
 
 	// set this to a kase.test value to run one test only

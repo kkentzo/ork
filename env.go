@@ -15,11 +15,11 @@ type Env map[string]string
 // does not mutate `this` in any way
 // all env values will be parsed to detect substitution patterns $[...]
 // which will be executed as actions whose output will be interpolated in the env value
-func (this Env) Apply() error {
+func (this Env) Apply(greedyEnvSubst bool) error {
 	// apply key, value entries
 	for key, value := range this {
 		val := ""
-		for _, token := range parseEnvTokens(value) {
+		for _, token := range parseEnvTokens(value, greedyEnvSubst) {
 			v, err := token.expand()
 			if err != nil {
 				return fmt.Errorf("key %s: %s: %v", key, value, err)
@@ -44,8 +44,13 @@ type envToken struct {
 // split the statement into discrete tokens that will:
 // - either be executed and replaced with the execution output
 // - or will just be used as is
-func parseEnvTokens(statement string) []envToken {
-	re := regexp.MustCompile(`\$\[.*?\]`)
+func parseEnvTokens(statement string, greedyEnvSubst bool) []envToken {
+	var re *regexp.Regexp
+	if greedyEnvSubst {
+		re = regexp.MustCompile(`\$\[.*\]+`)
+	} else {
+		re = regexp.MustCompile(`\$\[.*?\]`)
+	}
 
 	tokens := []envToken{}
 	matches := re.FindAllStringIndex(statement, -1)

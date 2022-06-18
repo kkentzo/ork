@@ -6,17 +6,18 @@ import (
 )
 
 type Task struct {
-	Name        string   `yaml:"name"`
-	Default     string   `yaml:"default"` // used in the global task
-	Description string   `yaml:"description"`
-	WorkingDir  string   `yaml:"working_dir"`
-	Env         []Env    `yaml:"env"`
-	ExpandEnv   *bool    `yaml:"expand_env"`
-	Actions     []string `yaml:"actions"`
-	DependsOn   []string `yaml:"depends_on"`
-	Tasks       []*Task  `yaml:"tasks"`
-	OnSuccess   []string `yaml:"on_success"`
-	OnFailure   []string `yaml:"on_failure"`
+	Name           string   `yaml:"name"`
+	Default        string   `yaml:"default"` // used in the global task
+	Description    string   `yaml:"description"`
+	WorkingDir     string   `yaml:"working_dir"`
+	Env            []Env    `yaml:"env"`
+	ExpandEnv      *bool    `yaml:"expand_env"`
+	GreedyEnvSubst *bool    `yaml:"env_subst_greedy"`
+	Actions        []string `yaml:"actions"`
+	DependsOn      []string `yaml:"depends_on"`
+	Tasks          []*Task  `yaml:"tasks"`
+	OnSuccess      []string `yaml:"on_success"`
+	OnFailure      []string `yaml:"on_failure"`
 }
 
 func (t *Task) Info() string {
@@ -85,7 +86,7 @@ func (t *Task) execute(inventory Inventory, logger Logger, cdt map[string]struct
 	// apply the environment
 	logger.Debugf("[%s] applying task environment", t.Name)
 	for _, e := range t.Env {
-		if err = e.Apply(); err != nil {
+		if err = e.Apply(t.IsEnvSubstGreedy()); err != nil {
 			err = fmt.Errorf("[%s] failed to apply environment: %v", t.Name, err)
 			return
 		}
@@ -102,6 +103,13 @@ func (t *Task) execute(inventory Inventory, logger Logger, cdt map[string]struct
 	}
 
 	return
+}
+
+func (t *Task) IsEnvSubstGreedy() bool {
+	if t.GreedyEnvSubst == nil {
+		return false
+	}
+	return *t.GreedyEnvSubst
 }
 
 func executeAction(action string, expandEnv *bool, chdir string, logger Logger) error {
