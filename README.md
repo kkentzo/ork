@@ -264,23 +264,28 @@ tasks:
       - name: ping
         actions:
           - echo "${TOP_LEVEL_ENV} => pinging ${SERVER_URL}"
+      - name: send
+        actions:
+          - echo "${TOP_LEVEL_ENV} => sending to ${SERVER_URL}"
 ```
 
 Dynamic tasks are created during runtime as an extra layer between the
 current task and its nested tasks. The above Orkfile defines two
-dynamic tasks (`production` and `staging`) under which the `ping` task
-will be available, so the following tasks will be constructed:
+dynamic tasks (`production` and `staging`) under which both the `ping`
+and `send` tasks will be available, so the following actionable tasks
+will be constructed:
 
-- `deploy`
 - `deploy.production.ping`
+- `deploy.production.send`
 - `deploy.staging.ping`
+- `deploy.staging.send`
 
 The rules of nested tasks still apply, i.e. tasks are executed
 top-down (parent to children) and all the typical task characteristics
 (`env`, `actions`, `on_success`) are available for dynamic tasks.
 
 So, if we execute `ork deploy.staging.ping`, the output will be:
-`deploy => http://i_am_staging`.
+`deploy => pinging http://i_am_staging`.
 
 ## Installation & Usage
 
