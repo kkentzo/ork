@@ -67,18 +67,22 @@ func (i Inventory) Find(label string) *Task {
 	return i[label]
 }
 
-func (i Inventory) All() []*LabeledTask {
+func (i Inventory) Tasks(sel TaskSelector) []*LabeledTask {
 	tasks := make([]*LabeledTask, 0, len(i))
 	for label, task := range i {
-		tasks = append(tasks, &LabeledTask{Label: label, Task: task})
+		if sel(task) {
+			tasks = append(tasks, &LabeledTask{Label: label, Task: task})
+		}
 	}
 	return tasks
 }
 
-func (i Inventory) Labels() []string {
+func (i Inventory) Labels(sel TaskSelector) []string {
 	labels := make([]string, 0, len(i))
-	for label, _ := range i {
-		labels = append(labels, label)
+	for label, task := range i {
+		if sel(task) {
+			labels = append(labels, label)
+		}
 	}
 	return labels
 }

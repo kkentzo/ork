@@ -474,7 +474,7 @@ tasks:
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))
 
-	tasks := f.AllTasks()
+	tasks := f.GetTasks(All)
 	assert.Equal(t, 3, len(tasks))
 }
 
@@ -522,7 +522,7 @@ tasks:
 	log := NewMockLogger()
 
 	// do we have the correct tasks?
-	all := f.AllTasks()
+	all := f.GetTasks(All)
 	sort.Slice(all, func(i, j int) bool {
 		return all[i].Label < all[j].Label
 	})

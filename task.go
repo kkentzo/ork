@@ -7,6 +7,13 @@ import (
 
 type graph map[*Task]*Task
 
+type TaskSelector func(*Task) bool
+
+var (
+	Actionable TaskSelector = func(t *Task) bool { return t.IsActionable() }
+	All        TaskSelector = func(_ *Task) bool { return true }
+)
+
 type Task struct {
 	Name           string   `yaml:"name"`
 	Default        string   `yaml:"default"` // used in the global task
@@ -102,6 +109,10 @@ func (t *Task) IsEnvSubstGreedy() bool {
 		return false
 	}
 	return *t.GreedyEnvSubst
+}
+
+func (t *Task) IsActionable() bool {
+	return len(t.Actions) > 0
 }
 
 func executeAction(action string, expandEnv *bool, chdir string, logger Logger) error {

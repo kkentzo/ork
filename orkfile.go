@@ -75,12 +75,12 @@ func (f *Orkfile) Info(label string) (info string) {
 	return
 }
 
-func (f *Orkfile) AllTasks() []*LabeledTask {
-	return f.inventory.All()
+func (f *Orkfile) GetTasks(sel TaskSelector) []*LabeledTask {
+	return f.inventory.Tasks(sel)
 }
 
-func (f *Orkfile) Labels() []string {
-	return f.inventory.Labels()
+func (f *Orkfile) Labels(sel TaskSelector) []string {
+	return f.inventory.Labels(sel)
 }
 
 func (f *Orkfile) Env() []Env {

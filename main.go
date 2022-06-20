@@ -65,7 +65,7 @@ func main() {
 				return
 			}
 			// return the available task to `complete` command
-			for _, lbl := range orkfile.Labels() {
+			for _, lbl := range orkfile.Labels(Actionable) {
 				fmt.Println(lbl)
 			}
 		},
@@ -95,7 +95,7 @@ func main() {
 			if len(labels) == 0 {
 				if c.Bool("info") {
 					// get tasks and sort them by name
-					labels := orkfile.Labels()
+					labels := orkfile.Labels(Actionable)
 					sort.Slice(labels, func(i, j int) bool {
 						return labels[i] < labels[j]
 					})
