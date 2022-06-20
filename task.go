@@ -56,7 +56,7 @@ func (t *Task) execute(inventory Inventory, logger Logger, cdt graph) (err error
 		}
 		for _, a := range actions {
 			if err := executeAction(a, t.ExpandEnv, t.WorkingDir, logger); err != nil {
-				logger.Errorf("[%s] failed to execute hook: %v", err)
+				logger.Errorf("[%s] failed to execute hook: %v", t.Name, err)
 			}
 		}
 	}()
