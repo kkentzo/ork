@@ -237,6 +237,51 @@ tasks:
 All the task's actions will have `./ansible` as their working
 directory.
 
+### Dynamic Task Generation
+
+Dynamic tasks that are generated at runtime can be defined in the
+Orkfile as follows:
+
+```yaml
+tasks:
+  - name: deploy
+    env:
+      - TOP_LEVEL_ENV: deploy
+    generate:
+      - name: production
+        env:
+          - SERVER_URL: http://i_am_production
+        actions:
+          - echo $SERVER_URL
+      - name: staging
+        env:
+          - SERVER_URL: http://i_am_staging
+        actions:
+          - echo $SERVER_URL
+        on_success:
+          - echo "staging hook"
+    tasks:
+      - name: ping
+        actions:
+          - echo "${TOP_LEVEL_ENV} => pinging ${SERVER_URL}"
+```
+
+Dynamic tasks are created during runtime as an extra layer between the
+current task and its nested tasks. The above Orkfile defines two
+dynamic tasks (`production` and `staging`) under which the `ping` task
+will be available, so the following tasks will be constructed:
+
+- `deploy`
+- `deploy.production.ping`
+- `deploy.staging.ping`
+
+The rules of nested tasks still apply, i.e. tasks are executed
+top-down (parent to children) and all the typical task characteristics
+(`env`, `actions`, `on_success`) are available for dynamic tasks.
+
+So, if we execute `ork deploy.staging.ping`, the output will be:
+`deploy => http://i_am_staging`.
+
 ## Installation & Usage
 
 `ork` can be installed by downloading the latest release binary from

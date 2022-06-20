@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -226,7 +227,7 @@ tasks:
 	}
 
 	// set this to a kase.test value to run one test only
-	only_kase := ""
+	only_kase := "command substitution in env"
 
 	for _, kase := range kases {
 		if only_kase != "" && only_kase != kase.test {
@@ -486,4 +487,71 @@ func Test_Read(t *testing.T) {
 func Test_Read_When_File_DoesNot_Exist(t *testing.T) {
 	_, err := Read("this_file_does_not_exist")
 	assert.Error(t, err)
+}
+
+func Test_Task_Generation(t *testing.T) {
+	yml := `
+tasks:
+  - name: deploy
+    env:
+      - ACTION: deploy
+    generate:
+      - name: production
+        env:
+          - SERVER_URL: i_am_production
+        actions:
+          - echo $SERVER_URL
+        on_success:
+          - echo "production hook"
+      - name: staging
+        env:
+          - SERVER_URL: i_am_staging
+        actions:
+          - echo $SERVER_URL
+        on_success:
+          - echo "staging hook"
+    actions:
+      - echo "deploy!"
+    tasks:
+      - name: ping
+        actions:
+          - echo "${ACTION} => pinging ${SERVER_URL}"
+`
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml)))
+	log := NewMockLogger()
+
+	// do we have the correct tasks?
+	all := f.AllTasks()
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].Label < all[j].Label
+	})
+
+	names := []string{"deploy", "deploy.production", "deploy.production.ping", "deploy.staging", "deploy.staging.ping"}
+	require.Equal(t, len(names), len(all))
+	for i := range names {
+		assert.Equal(t, names[i], all[i].Label)
+	}
+
+	// ok, run the two tasks
+	assert.NoError(t, f.Run("deploy.production.ping", log))
+	assert.NoError(t, f.Run("deploy.staging.ping", log))
+
+	// do we have the correct output?
+	expected := []string{
+		"deploy!",
+		"i_am_production",
+		"production hook",
+		"deploy => pinging i_am_production",
+		"deploy!",
+		"i_am_staging",
+		"staging hook",
+		"deploy => pinging i_am_staging",
+	}
+	actual := log.Outputs()
+
+	require.Equal(t, len(expected), len(actual))
+	for i := range actual {
+		assert.Contains(t, actual[i], expected[i], actual[i])
+	}
 }

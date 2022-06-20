@@ -20,16 +20,7 @@ type Task struct {
 	Tasks          []*Task  `yaml:"tasks"`
 	OnSuccess      []string `yaml:"on_success"`
 	OnFailure      []string `yaml:"on_failure"`
-}
-
-func (t *Task) Info() string {
-	var desc string
-	if t.Description == "" {
-		desc = "<no description>"
-	} else {
-		desc = t.Description
-	}
-	return fmt.Sprintf("[%s] %s", t.Name, desc)
+	DynamicTasks   []*Task  `yaml:"generate"`
 }
 
 // execute the task

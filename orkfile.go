@@ -66,13 +66,21 @@ func (f *Orkfile) RunDefault(logger Logger) error {
 // return info for the requested task
 func (f *Orkfile) Info(label string) (info string) {
 	if task := f.inventory.Find(label); task != nil {
-		info = task.Info()
+		desc := task.Description
+		if desc == "" {
+			desc = "<no description>"
+		}
+		info = fmt.Sprintf("[%s] %s", label, desc)
 	}
 	return
 }
 
-func (f *Orkfile) AllTasks() []*Task {
+func (f *Orkfile) AllTasks() []*LabeledTask {
 	return f.inventory.All()
+}
+
+func (f *Orkfile) Labels() []string {
+	return f.inventory.Labels()
 }
 
 func (f *Orkfile) Env() []Env {

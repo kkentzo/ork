@@ -65,8 +65,8 @@ func main() {
 				return
 			}
 			// return the available task to `complete` command
-			for _, t := range orkfile.Tasks {
-				fmt.Println(t.Name)
+			for _, lbl := range orkfile.Labels() {
+				fmt.Println(lbl)
 			}
 		},
 		Action: func(c *cli.Context) error {
@@ -95,12 +95,12 @@ func main() {
 			if len(labels) == 0 {
 				if c.Bool("info") {
 					// get tasks and sort them by name
-					tasks := orkfile.AllTasks()
-					sort.Slice(tasks, func(i, j int) bool {
-						return tasks[i].Name < tasks[j].Name
+					labels := orkfile.Labels()
+					sort.Slice(labels, func(i, j int) bool {
+						return labels[i] < labels[j]
 					})
-					for _, task := range tasks {
-						fmt.Println(task.Info())
+					for _, label := range labels {
+						fmt.Println(orkfile.Info(label))
 					}
 				} else {
 					return orkfile.RunDefault(logger)
