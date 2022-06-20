@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+type graph map[*Task]*Task
+
 type Task struct {
 	Name           string   `yaml:"name"`
 	Default        string   `yaml:"default"` // used in the global task
@@ -32,12 +34,13 @@ func (t *Task) Info() string {
 
 // execute the task
 func (t *Task) Execute(inventory Inventory, logger Logger) error {
-	return t.execute(inventory, logger, map[string]struct{}{})
+	return t.execute(inventory, logger, graph{})
 }
 
 // execute the task workflow
 // return the first encountered error (if any)
-func (t *Task) execute(inventory Inventory, logger Logger, cdt map[string]struct{}) (err error) {
+// cdt records dependencies between tasks in the form: key: parent, value: child
+func (t *Task) execute(inventory Inventory, logger Logger, cdt graph) (err error) {
 	// handle success/failure hooks
 	defer func() {
 		logger.Debugf("[%s] executing post-action hooks", t.Name)
@@ -58,27 +61,25 @@ func (t *Task) execute(inventory Inventory, logger Logger, cdt map[string]struct
 		}
 	}()
 
-	// mark task as visited
-	cdt[t.Name] = struct{}{}
-
 	// first, execute all dependencies
 	logger.Debugf("[%s] executing dependencies", t.Name)
 	for _, label := range t.DependsOn {
 		// find the dependency -- does it exist?
-		dep := inventory.Find(label)
-		if dep == nil {
+		child := inventory.Find(label)
+		if child == nil {
 			err = fmt.Errorf("[%s] dependency %s does not exist", t.Name, label)
 			return
 		}
 
 		// should we visit the dependency?
-		if _, ok := cdt[dep.Name]; ok {
+		if dep := cdt[t]; child == dep {
 			err = fmt.Errorf("[%s] cyclic dependency detected: %s->%s", t.Name, t.Name, dep.Name)
 			return
 		}
 
 		// ok, let's run it
-		if err = dep.execute(inventory, logger, cdt); err != nil {
+		cdt[t] = child
+		if err = child.execute(inventory, logger, cdt); err != nil {
 			return
 		}
 	}
