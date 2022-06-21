@@ -7,14 +7,7 @@ import (
 
 const DEFAULT_TASK_GROUP_SEP = "."
 
-type Inventory map[string]*Task
-
-// a task may be filed in the inventory with a different label than its name
-// (e.g. due to dynamic task definitions)
-type LabeledTask struct {
-	Label string
-	Task  *Task
-}
+type Inventory map[string]*LabeledTask
 
 func (i Inventory) Populate(tasks []*Task) error {
 	return i.populate(tasks, "")
@@ -58,20 +51,20 @@ func (i Inventory) Add(name string, t *Task) error {
 	if _, ok := i[name]; ok {
 		return fmt.Errorf("duplicate task: %s", name)
 	}
-	i[name] = t
+	i[name] = &LabeledTask{label: name, Task: t}
 
 	return nil
 }
 
-func (i Inventory) Find(label string) *Task {
+func (i Inventory) Find(label string) *LabeledTask {
 	return i[label]
 }
 
 func (i Inventory) Tasks(sel TaskSelector) []*LabeledTask {
 	tasks := make([]*LabeledTask, 0, len(i))
-	for label, task := range i {
+	for _, task := range i {
 		if sel(task) {
-			tasks = append(tasks, &LabeledTask{Label: label, Task: task})
+			tasks = append(tasks, task)
 		}
 	}
 	return tasks

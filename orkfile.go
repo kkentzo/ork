@@ -17,6 +17,7 @@ type Orkfile struct {
 	Global *Task   `yaml:"global"`
 	Tasks  []*Task `yaml:"tasks"`
 
+	global    *LabeledTask
 	inventory Inventory
 }
 
@@ -36,8 +37,8 @@ func (f *Orkfile) Parse(contents []byte) error {
 		return err
 	}
 	// name the global task (if not already named)
-	if f.Global != nil && f.Global.Name == "" {
-		f.Global.Name = "global"
+	if f.Global != nil {
+		f.global = &LabeledTask{label: "global", Task: f.Global}
 	}
 
 	// populate the task inventory
@@ -47,8 +48,8 @@ func (f *Orkfile) Parse(contents []byte) error {
 
 // run the requested task
 func (f *Orkfile) Run(label string, logger Logger) error {
-	if f.Global != nil {
-		if err := f.Global.Execute(f.inventory, logger); err != nil {
+	if f.global != nil {
+		if err := f.global.Execute(f.inventory, logger); err != nil {
 			return fmt.Errorf("failed to execute global task: %v", err)
 		}
 	}

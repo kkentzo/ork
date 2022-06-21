@@ -7,14 +7,20 @@ import (
 
 type graph map[*Task]*Task
 
-type TaskSelector func(*Task) bool
+type TaskSelector func(*LabeledTask) bool
 
 var (
-	Actionable TaskSelector = func(t *Task) bool { return t.IsActionable() }
-	All        TaskSelector = func(_ *Task) bool { return true }
+	Actionable TaskSelector = func(t *LabeledTask) bool { return t.IsActionable() }
+	All        TaskSelector = func(_ *LabeledTask) bool { return true }
 )
 
+type LabeledTask struct {
+	label string // the task's fully qualified name (the one visible to the user)
+	*Task
+}
+
 type Task struct {
+	label          string
 	Name           string   `yaml:"name"`
 	Default        string   `yaml:"default"` // used in the global task
 	Description    string   `yaml:"description"`
@@ -31,72 +37,72 @@ type Task struct {
 }
 
 // execute the task
-func (t *Task) Execute(inventory Inventory, logger Logger) error {
-	return t.execute(inventory, logger, graph{})
+func (lt *LabeledTask) Execute(inventory Inventory, logger Logger) error {
+	return lt.execute(inventory, logger, graph{})
 }
 
 // execute the task workflow
 // return the first encountered error (if any)
 // cdt records dependencies between tasks in the form: key: parent, value: child
-func (t *Task) execute(inventory Inventory, logger Logger, cdt graph) (err error) {
+func (lt *LabeledTask) execute(inventory Inventory, logger Logger, cdt graph) (err error) {
 	// handle success/failure hooks
 	defer func() {
-		logger.Debugf("[%s] executing post-action hooks", t.Name)
+		logger.Debugf("[%s] executing post-action hooks", lt.label)
 		var actions []string
 		if err == nil {
-			actions = t.OnSuccess
+			actions = lt.OnSuccess
 		} else {
 			// set the ORK_ERROR env variable
 			if os.Setenv("ORK_ERROR", err.Error()) != nil {
-				logger.Errorf("[%s] failed to set the ORK_ERROR environment variable", t.Name)
+				logger.Errorf("[%s] failed to set the ORK_ERROR environment variable", lt.label)
 			}
-			actions = t.OnFailure
+			actions = lt.OnFailure
 		}
 		for _, a := range actions {
-			if err := executeAction(a, t.ExpandEnv, t.WorkingDir, logger); err != nil {
-				logger.Errorf("[%s] failed to execute hook: %v", t.Name, err)
+			if err := executeAction(a, lt.ExpandEnv, lt.WorkingDir, logger); err != nil {
+				logger.Errorf("[%s] failed to execute hook: %v", lt.label, err)
 			}
 		}
 	}()
 
 	// first, execute all dependencies
-	logger.Debugf("[%s] executing dependencies", t.Name)
-	for _, label := range t.DependsOn {
+	logger.Debugf("[%s] executing dependencies", lt.label)
+	for _, label := range lt.DependsOn {
 		// find the dependency -- does it exist?
 		child := inventory.Find(label)
 		if child == nil {
-			err = fmt.Errorf("[%s] dependency %s does not exist", t.Name, label)
+			err = fmt.Errorf("[%s] dependency %s does not exist", lt.label, label)
 			return
 		}
 
 		// should we visit the dependency?
-		if dep := cdt[t]; child == dep {
-			err = fmt.Errorf("[%s] cyclic dependency detected: %s->%s", t.Name, t.Name, dep.Name)
+		if dep := cdt[lt.Task]; child.Task == dep {
+			err = fmt.Errorf("[%s] cyclic dependency detected: %s->%s", lt.label, lt.Name, dep.Name)
 			return
 		}
 
 		// ok, let's run it
-		cdt[t] = child
+		cdt[lt.Task] = child.Task
 		if err = child.execute(inventory, logger, cdt); err != nil {
 			return
 		}
 	}
 
 	// apply the environment
-	logger.Debugf("[%s] applying task environment", t.Name)
-	for _, e := range t.Env {
-		if err = e.Apply(t.IsEnvSubstGreedy()); err != nil {
-			err = fmt.Errorf("[%s] failed to apply environment: %v", t.Name, err)
+	logger.Debugf("[%s] applying task environment", lt.label)
+	for _, e := range lt.Env {
+		if err = e.Apply(lt.IsEnvSubstGreedy()); err != nil {
+			err = fmt.Errorf("[%s] failed to apply environment: %v", lt.label, err)
 			return
 		}
 	}
 
 	// execute all the task's actions (if any)
-	logger.Debugf("[%s] executing actions", t.Name)
-	for idx, action := range t.Actions {
-		logger.Infof("[%s] %s", t.Name, t.Actions[idx])
-		if err = executeAction(action, t.ExpandEnv, t.WorkingDir, logger); err != nil {
-			err = fmt.Errorf("[%s] %v", t.Name, err)
+	logger.Debugf("[%s] executing actions", lt.label)
+	for idx, action := range lt.Actions {
+		logger.Infof("[%s] %s", lt.label, lt.Actions[idx])
+		if err = executeAction(action, lt.ExpandEnv, lt.WorkingDir, logger); err != nil {
+			err = fmt.Errorf("[%s] %v", lt.label, err)
 			return
 		}
 	}

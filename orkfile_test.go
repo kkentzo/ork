@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
+	"github.com/apsdehal/go-logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -524,34 +526,49 @@ tasks:
 	// do we have the correct tasks?
 	all := f.GetTasks(All)
 	sort.Slice(all, func(i, j int) bool {
-		return all[i].Label < all[j].Label
+		return all[i].label < all[j].label
 	})
 
 	names := []string{"deploy", "deploy.production", "deploy.production.ping", "deploy.staging", "deploy.staging.ping"}
 	require.Equal(t, len(names), len(all))
 	for i := range names {
-		assert.Equal(t, names[i], all[i].Label)
+		assert.Equal(t, names[i], all[i].label)
 	}
 
 	// ok, run the two tasks
 	assert.NoError(t, f.Run("deploy.production.ping", log))
 	assert.NoError(t, f.Run("deploy.staging.ping", log))
 
-	// do we have the correct output?
+	// test the command outputs?
 	expected := []string{
-		"deploy!",
-		"i_am_production",
-		"production hook",
-		"deploy => pinging i_am_production",
-		"deploy!",
-		"i_am_staging",
-		"staging hook",
-		"deploy => pinging i_am_staging",
+		"deploy!\n",
+		"i_am_production\n",
+		"production hook\n",
+		"deploy => pinging i_am_production\n",
+		"deploy!\n",
+		"i_am_staging\n",
+		"staging hook\n",
+		"deploy => pinging i_am_staging\n",
 	}
 	actual := log.Outputs()
 
 	require.Equal(t, len(expected), len(actual))
 	for i := range actual {
-		assert.Contains(t, actual[i], expected[i], actual[i])
+		assert.Equal(t, expected[i], actual[i], actual[i])
+	}
+
+	// test the info logs
+	expected = []string{
+		"[deploy]",
+		"[deploy.production]",
+		"[deploy.production.ping]",
+		"[deploy]",
+		"[deploy.staging]",
+		"[deploy.staging.ping]",
+	}
+	actual = log.Logs(logger.InfoLevel)
+	require.Equal(t, len(expected), len(actual))
+	for i := range actual {
+		assert.True(t, strings.HasPrefix(actual[i], expected[i]), actual[i])
 	}
 }
