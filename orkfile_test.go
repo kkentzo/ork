@@ -480,6 +480,33 @@ tasks:
 	assert.Equal(t, 3, len(tasks))
 }
 
+func Test_Orkfile_ActionableTasks(t *testing.T) {
+	yml := `
+tasks:
+  - name: a1
+    actions:
+      - echo a1
+  - name: a2
+    depends_on:
+      - a1
+  - name: a3
+    on_success:
+      - echo a3
+`
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml)))
+
+	all := f.GetTasks(All)
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].label < all[j].label
+	})
+
+	assert.Equal(t, 3, len(all))
+	assert.True(t, all[0].IsActionable(), all[0].label)
+	assert.True(t, all[1].IsActionable(), all[1].label)
+	assert.False(t, all[2].IsActionable(), all[2].label)
+}
+
 func Test_Read(t *testing.T) {
 	contents, err := Read("Orkfile.yml")
 	assert.NoError(t, err)

@@ -118,7 +118,7 @@ func (t *Task) IsEnvSubstGreedy() bool {
 }
 
 func (t *Task) IsActionable() bool {
-	return len(t.Actions) > 0
+	return len(t.Actions) > 0 || len(t.DependsOn) > 0
 }
 
 func executeAction(action string, expandEnv *bool, chdir string, logger Logger) error {
