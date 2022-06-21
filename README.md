@@ -109,6 +109,8 @@ The global section is also a task in itself, so it can have its own
 
 ### Environment Variables
 
+#### Command substitution
+
 Environment variables (global and task-specific) support command
 substitution interpolation using the special form `$[...]` like so:
 
@@ -125,19 +127,7 @@ tasks:
 The output of running `ork foobar` on the above Orkfile will be
 `foo-bar`.
 
-Environment variables can be defined in different groups so that each
-group can utilize values from the previous group. The following
-example will output `a`:
-
-```yaml
-tasks:
-  - name: foo
-    env:
-      - A: a
-      - B: $[bash -c "echo $a"]
-    actions:
-      - echo $B
-```
+#### Variable expansion
 
 Environment variables are expanded before the action is actually
 executed. In the example above, this means that `$VAR` will be
@@ -158,6 +148,38 @@ If `expand_env` was true (the default behaviour), then the token `$f`
 would be substituted with an empty string before the action was
 executed and we would not receive the expected output from the
 command.
+
+#### Variable grouping and ordering
+
+The ordering of environment variables in a single group is random:
+
+```yaml
+tasks:
+  - name: foo
+    env:
+      - A: a
+        B: $[bash -c "echo $A"]
+    actions:
+      - echo $B
+```
+
+The output in this case would randomly vary between `a` and ``.
+
+However, environment variables can be defined in different (ordered)
+groups so that each group can utilize values from the previous
+group. The following example will always output `a`:
+
+```yaml
+tasks:
+  - name: foo
+    env:
+      - A: a
+      - B: $[bash -c "echo $A"]
+    actions:
+      - echo $B
+```
+
+#### Command substitution pattern matching
 
 The matching of the substitution pattern `$[...]` can be problematic
 for statements like
