@@ -7,11 +7,12 @@
 in software projects.
 
 It is meant as a modern, light-weight substitute to the venerable
-`Makefile` program and especially for `Makefile`s that make heavy use
-of `.PHONY` targets (i.e. `Makefile`s that focus on operational tasks
-rather than files).
+`Makefile` program and especially for Makefiles that make heavy use of
+`.PHONY` targets (i.e. Makefiles that focus on the orchestration of
+operations rather than the generation of target files).
 
-`ork` is simple and mostly inspired by the workflow syntax of
+`ork` aims to stay simple and is mostly inspired by the workflow
+syntax of
 [Github](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions)
 and [Gitlab](https://docs.gitlab.com/ee/ci/yaml/gitlab_ci_yaml.html)
 CI products.
@@ -21,17 +22,24 @@ CI products.
 ### Workflow organization
 
 `ork` organizes workflows in yaml format (`Orkfile.yml`) as a
-collection of tasks, each consisting of a sequence of actions that are
-executed independently of each other (i.e. in separate processes). If
-an action results in an error, then the chain stops.
+hierarchy of tasks, with each task having the following optional
+characteristics:
 
-Here's an example:
+- a sequence of task dependencies (`depends_on`) that serve as
+  prerequisites for the current task
+- a set of task-specific environment variables (`env`)
+- a sequence of `actions` that are executed independently of each other
+(i.e. in separate processes)
+- post-execution hooks (`on_success`, `on_error`)
+
+The execution of any task is preceded by the execution of all the
+tasks in the hierarchy chain in top-down order.
+
+Here's a simple example:
 
 ```yaml
 global:
   default: build
-  env:
-    - GO_BUILD: go -ldflags="-s -w"
 
 tasks:
 
@@ -41,10 +49,23 @@ tasks:
       - GOOS: linux
         GOARCH: amd64
         GO_TARGET: bin/foo
+        GO_BUILD: go -ldflags="-s -w"
     actions:
       - $GO_BUILD -o $GO_TARGET
 
+  - name: test
+    description: test the application
+    depends_on:
+      - build
+    actions:
+      - go test . -v -cover -count=1
+
 ```
+
+In the example above there are two tasks: `build` and `test`. Running
+`ork` on the Orkfile will execute the default `build` task. Running
+`ork test` will execute first the `build` task and then the `test`
+task.
 
 A task can contain any kind of executable actions, e.g.:
 
@@ -83,10 +104,11 @@ setting up the children tasks).
 
 ### Global configuration
 
-As seen above, Orkfiles can also have a global section for setting up
-properties for all tasks such as environment variables, the default
-task (using `default`) etc. Global environment variables are overriden
-by local (task-specific) ones, e.g.:
+As seen above, Orkfiles can also have a global task that will be
+executed before anything else. The global task is useful for things
+like global environment setup, defining the default task, setup common
+dependencies etc. Global environment variables are overriden by local
+(task-specific) ones, e.g.:
 
 ```yaml
 global:
@@ -103,9 +125,6 @@ global:
 
 In this case, `ork foo` will output `foo` (the task-local version of
 `$VAR`).
-
-The global section is also a task in itself, so it can have its own
-`actions`, hooks etc. These will be executed before anything else.
 
 ### Environment Variables
 
