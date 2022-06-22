@@ -24,7 +24,7 @@ OPTIONS:
 func runApp(args []string, logger Logger) error {
 	app := cli.App{
 		Name:        "ork",
-		Description: "command workflow management for software projects",
+		Description: "workflow management for software projects",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "path",
@@ -64,17 +64,17 @@ func runApp(args []string, logger Logger) error {
 		Action: func(c *cli.Context) error {
 			// set log level for logger
 			if err := logger.SetLogLevel(c.String("level")); err != nil {
-				logger.Fatal(err.Error())
+				return err
 			}
 
 			// read Orkfile contents
 			contents, err := Read(c.String("path"))
 			if err != nil {
-				logger.Fatalf("failed to find Orkfile: %v", err)
+				return fmt.Errorf("failed to find Orkfile in path %s", c.String("path"))
 			}
 			orkfile := New()
 			if err := orkfile.Parse(contents); err != nil {
-				logger.Fatalf("failed to parse Orkfile: %v", err)
+				return fmt.Errorf("failed to parse Orkfile: %v", err)
 			}
 
 			// read in task labels
@@ -104,7 +104,7 @@ func runApp(args []string, logger Logger) error {
 				if c.Bool("info") {
 					logger.Output(orkfile.Info(label) + "\n")
 				} else if err := orkfile.Run(label, logger); err != nil {
-					logger.Fatal(err.Error())
+					return err
 				}
 			}
 			return nil

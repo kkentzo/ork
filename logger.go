@@ -40,9 +40,11 @@ type Logger interface {
 	Write(p []byte) (n int, err error)
 
 	SetLogLevel(string) error
+	GetLogLevel() logger.LogLevel
 }
 
 type OrkLogger struct {
+	level logger.LogLevel
 	*logger.Logger
 }
 
@@ -52,16 +54,22 @@ func NewLogger() (Logger, error) {
 		return nil, err
 	}
 	l.SetFormat("[%{level}] %{message}")
-	return &OrkLogger{Logger: l}, nil
+	l.SetLogLevel(logger.InfoLevel)
+	return &OrkLogger{Logger: l, level: logger.InfoLevel}, nil
 }
 
 func (l *OrkLogger) SetLogLevel(level string) error {
 	lvl, ok := logLevels[level]
 	if !ok {
-		return fmt.Errorf("uknown log level: %s", level)
+		return fmt.Errorf("unknown log level: %s", level)
 	}
 	l.Logger.SetLogLevel(lvl)
+	l.level = lvl
 	return nil
+}
+
+func (l *OrkLogger) GetLogLevel() logger.LogLevel {
+	return l.level
 }
 
 func (l *OrkLogger) Write(p []byte) (n int, err error) {

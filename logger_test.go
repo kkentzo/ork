@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/apsdehal/go-logger"
 )
@@ -9,6 +10,7 @@ import (
 type MockLogger struct {
 	logs    map[logger.LogLevel][]string
 	outputs []string
+	*OrkLogger
 }
 
 func NewMockLogger() *MockLogger {
@@ -24,11 +26,20 @@ func NewMockLogger() *MockLogger {
 	for _, lvl := range levels {
 		logs[lvl] = []string{}
 	}
-	return &MockLogger{logs: logs, outputs: []string{}}
+	actual, err := NewLogger()
+	if err != nil {
+		fmt.Println("failed to initialize MockLogger!")
+		os.Exit(1)
+	}
+	return &MockLogger{logs: logs, outputs: []string{}, OrkLogger: actual.(*OrkLogger)}
 }
 
 func (l *MockLogger) SetLogLevel(lvl string) error {
-	return nil
+	return l.OrkLogger.SetLogLevel(lvl)
+}
+
+func (l *MockLogger) GetLogLevel() logger.LogLevel {
+	return l.OrkLogger.level
 }
 
 func (l *MockLogger) Logs(lvl logger.LogLevel) []string {
@@ -48,7 +59,9 @@ func (l *MockLogger) Fatalf(msg string, a ...interface{}) {
 }
 
 func (l *MockLogger) Error(msg string) {
-	l.logs[logger.ErrorLevel] = append(l.logs[logger.ErrorLevel], msg)
+	if logger.ErrorLevel <= l.GetLogLevel() {
+		l.logs[logger.ErrorLevel] = append(l.logs[logger.ErrorLevel], msg)
+	}
 }
 
 func (l *MockLogger) Errorf(msg string, a ...interface{}) {
@@ -56,7 +69,9 @@ func (l *MockLogger) Errorf(msg string, a ...interface{}) {
 }
 
 func (l *MockLogger) Info(msg string) {
-	l.logs[logger.InfoLevel] = append(l.logs[logger.InfoLevel], msg)
+	if logger.InfoLevel <= l.GetLogLevel() {
+		l.logs[logger.InfoLevel] = append(l.logs[logger.InfoLevel], msg)
+	}
 }
 
 func (l *MockLogger) Infof(msg string, a ...interface{}) {
@@ -64,7 +79,9 @@ func (l *MockLogger) Infof(msg string, a ...interface{}) {
 }
 
 func (l *MockLogger) Debug(msg string) {
-	l.logs[logger.DebugLevel] = append(l.logs[logger.DebugLevel], msg)
+	if logger.DebugLevel <= l.GetLogLevel() {
+		l.logs[logger.DebugLevel] = append(l.logs[logger.DebugLevel], msg)
+	}
 }
 
 func (l *MockLogger) Debugf(msg string, a ...interface{}) {
