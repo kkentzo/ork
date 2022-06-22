@@ -236,9 +236,6 @@ tasks:
       - curl -d '{"error":"$ORK_ERROR"}' -H "Content-Type: application/json" -X POST http://notifications.somewhere
 ```
 
-The `on_success` action hooks will be executed only if the task action
-chain is executed successfully. In the event of an error,
-
 If all of the task's actions are completed without any errors, then
 the `on_success` actions are executed, otherwise the `on_failure`
 actions are executed with access to the `$ORK_ERROR` environment
@@ -280,8 +277,6 @@ tasks:
           - SERVER_URL: http://i_am_staging
         actions:
           - echo $SERVER_URL
-        on_success:
-          - echo "staging hook"
     tasks:
       - name: ping
         actions:
