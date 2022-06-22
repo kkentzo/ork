@@ -326,8 +326,11 @@ So, if we execute `ork deploy.staging.ping`, the output will be:
 ## Installation & Usage
 
 `ork` can be installed by downloading the latest release binary from
-[here](https://github.com/kkentzo/ork/releases) and putting it in a
-convenient place in your `$PATH` (e.g. `/usr/local/bin`).
+[here](https://github.com/kkentzo/ork/releases) according to your
+platform. There are different binaries supporting intel (amd64) or arm
+architectures for linux or darwin (mac). The downloaded binary can
+then be installed in a convenient place in your `$PATH` (e.g. under
+`/usr/local/bin`).
 
 `ork` can execute one or more tasks defined in an Orkfile by running:
 
