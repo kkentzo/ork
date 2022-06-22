@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"sort"
 
@@ -22,14 +21,7 @@ OPTIONS:
 `
 }
 
-func main() {
-	logger, err := NewLogger()
-	if err != nil {
-		fmt.Println("failed to initialize logger")
-		os.Exit(1)
-	}
-
-	prepareCli()
+func runApp(args []string, logger Logger) error {
 	app := cli.App{
 		Name:        "ork",
 		Description: "command workflow management for software projects",
@@ -71,7 +63,9 @@ func main() {
 		},
 		Action: func(c *cli.Context) error {
 			// set log level for logger
-			logger.SetLogLevel(c.String("level"))
+			if err := logger.SetLogLevel(c.String("level")); err != nil {
+				logger.Fatal(err.Error())
+			}
 
 			// read Orkfile contents
 			contents, err := Read(c.String("path"))
@@ -83,15 +77,12 @@ func main() {
 				logger.Fatalf("failed to parse Orkfile: %v", err)
 			}
 
-			if c.Bool("tasks") {
-				fmt.Println("show info for all tasks")
-				return nil
-			}
-
 			// read in task labels
 			labels := c.Args().Slice()
 
-			// if no tasks are requested, then we need to work with the default task (if any)
+			// if no tasks are requested, then we
+			// either print info for all tasks
+			// or we execute the default task
 			if len(labels) == 0 {
 				if c.Bool("info") {
 					// get tasks and sort them by name
@@ -100,7 +91,7 @@ func main() {
 						return labels[i] < labels[j]
 					})
 					for _, label := range labels {
-						fmt.Println(orkfile.Info(label))
+						logger.Output(orkfile.Info(label) + "\n")
 					}
 				} else {
 					return orkfile.RunDefault(logger)
@@ -111,16 +102,27 @@ func main() {
 			// act upon all tasks
 			for _, label := range labels {
 				if c.Bool("info") {
-					fmt.Println(orkfile.Info(label))
+					logger.Output(orkfile.Info(label) + "\n")
 				} else if err := orkfile.Run(label, logger); err != nil {
-					log.Fatal(err.Error())
+					logger.Fatal(err.Error())
 				}
 			}
 			return nil
 		},
 	}
-	err = app.Run(os.Args)
+	return app.Run(args)
+}
+
+func main() {
+	prepareCli()
+
+	logger, err := NewLogger()
 	if err != nil {
+		fmt.Println("failed to initialize logger")
+		os.Exit(1)
+	}
+
+	if err := runApp(os.Args, logger); err != nil {
 		logger.Fatal(err.Error())
 	}
 }
