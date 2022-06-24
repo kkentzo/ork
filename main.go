@@ -8,6 +8,12 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// these will be populated at build time using an ldflag
+var (
+	GitCommit  string
+	OrkVersion string
+)
+
 func prepareCli() {
 	cli.AppHelpTemplate = `NAME:
    {{.Name}} - {{.Description}}
@@ -43,6 +49,11 @@ func runApp(args []string, logger Logger) error {
 				Aliases: []string{"i"},
 				Usage:   "show info for the supplied task or all tasks",
 			},
+			&cli.BoolFlag{
+				Name:    "version",
+				Aliases: []string{"v"},
+				Usage:   "show program version",
+			},
 		},
 		EnableBashCompletion: true,
 		BashComplete: func(c *cli.Context) {
@@ -62,6 +73,11 @@ func runApp(args []string, logger Logger) error {
 			}
 		},
 		Action: func(c *cli.Context) error {
+			if c.Bool("version") {
+				fmt.Printf("ork version: %s [%s]\n", OrkVersion, GitCommit)
+				os.Exit(0)
+			}
+
 			// set log level for logger
 			if err := logger.SetLogLevel(c.String("level")); err != nil {
 				return err

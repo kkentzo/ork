@@ -1,5 +1,8 @@
 global:
   default: build
+  env:
+    - GIT_COMMIT: $[bash -c "git rev-parse HEAD | cut -c-9"]$[bash -c "git diff --quiet || echo '-d'"]
+      ORK_VERSION: $[bash -c "git describe --tags --abbrev=0"]
 
 tasks:
   - name: build
@@ -7,10 +10,12 @@ tasks:
     env:
       - GOOS: linux
         GOARCH: amd64
-        GO_BUILD: go build
         GO_TARGET: bin/ork
     actions:
-      - $GO_BUILD -o $GO_TARGET
+      - >-
+        go build
+        -ldflags="-s -w -X main.GitCommit=${GIT_COMMIT} -X main.OrkVersion=${ORK_VERSION}"
+        -o ${GO_TARGET}
 
   - name: test
     description: test the application
