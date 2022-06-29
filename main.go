@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"sort"
+	"syscall"
 
 	"github.com/urfave/cli/v2"
 )
@@ -27,7 +30,7 @@ OPTIONS:
 `
 }
 
-func runApp(args []string, logger Logger) error {
+func runApp(ctx context.Context, args []string, logger Logger) error {
 	app := cli.App{
 		Name:        "ork",
 		Description: "workflow management for software projects",
@@ -110,7 +113,7 @@ func runApp(args []string, logger Logger) error {
 						logger.Output(orkfile.Info(label) + "\n")
 					}
 				} else {
-					return orkfile.RunDefault(logger)
+					return orkfile.RunDefault(ctx, logger)
 				}
 				return nil
 			}
@@ -119,7 +122,7 @@ func runApp(args []string, logger Logger) error {
 			for _, label := range labels {
 				if c.Bool("info") {
 					logger.Output(orkfile.Info(label) + "\n")
-				} else if err := orkfile.Run(label, logger); err != nil {
+				} else if err := orkfile.Run(ctx, label, logger); err != nil {
 					return err
 				}
 			}
@@ -138,7 +141,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := runApp(os.Args, logger); err != nil {
-		logger.Fatal(err.Error())
+	ctx, cancel := context.WithCancel(context.Background())
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func(cancel context.CancelFunc) {
+		<-sigs
+		// the cancel() call will cause the process to be killed
+		// this means that runApp() will return an error
+		// that will be treated as fatal below
+		cancel()
+	}(cancel)
+
+	if err := runApp(ctx, os.Args, logger); err != nil {
+		logger.Error(err.Error())
 	}
 }

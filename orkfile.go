@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"strings"
 
@@ -19,6 +21,7 @@ type Orkfile struct {
 
 	global    *LabeledTask
 	inventory Inventory
+	stdin     io.Reader
 }
 
 func Read(path string) (contents []byte, err error) {
@@ -30,6 +33,11 @@ func Read(path string) (contents []byte, err error) {
 }
 
 func New() *Orkfile { return &Orkfile{} }
+
+func (f *Orkfile) WithStdin(stdin io.Reader) *Orkfile {
+	f.stdin = stdin
+	return f
+}
 
 // parse the orkfile and populate the task inventory
 func (f *Orkfile) Parse(contents []byte) error {
@@ -47,21 +55,21 @@ func (f *Orkfile) Parse(contents []byte) error {
 }
 
 // run the requested task
-func (f *Orkfile) Run(label string, logger Logger) error {
+func (f *Orkfile) Run(ctx context.Context, label string, logger Logger) error {
 	if f.global != nil {
-		if err := f.global.Execute(f.inventory, logger); err != nil {
+		if err := f.global.WithStdin(f.stdin).Execute(ctx, f.inventory, logger); err != nil {
 			return fmt.Errorf("failed to execute global task: %v", err)
 		}
 	}
-	return run(label, f.inventory, logger)
+	return run(ctx, label, f.inventory, logger, f.stdin)
 }
 
 // run the default task (if any)
-func (f *Orkfile) RunDefault(logger Logger) error {
+func (f *Orkfile) RunDefault(ctx context.Context, logger Logger) error {
 	if f.Global == nil || f.Global.Default == "" {
 		return errors.New("default task has not been set")
 	}
-	return f.Run(f.Global.Default, logger)
+	return f.WithStdin(f.stdin).Run(ctx, f.Global.Default, logger)
 }
 
 // return info for the requested task
@@ -88,7 +96,7 @@ func (f *Orkfile) Env() []Env {
 	return f.Global.Env
 }
 
-func run(label string, inventory Inventory, logger Logger) error {
+func run(ctx context.Context, label string, inventory Inventory, logger Logger, stdin io.Reader) error {
 	task := inventory.Find(label)
 	if task == nil {
 		return fmt.Errorf("task %s does not exist", label)
@@ -96,9 +104,9 @@ func run(label string, inventory Inventory, logger Logger) error {
 	tokens := strings.Split(label, DEFAULT_TASK_GROUP_SEP)
 	parentTaskLabel := strings.Join(tokens[0:len(tokens)-1], DEFAULT_TASK_GROUP_SEP)
 	if parentTaskLabel != "" {
-		if err := run(parentTaskLabel, inventory, logger); err != nil {
+		if err := run(ctx, parentTaskLabel, inventory, logger, stdin); err != nil {
 			return err
 		}
 	}
-	return task.Execute(inventory, logger)
+	return task.WithStdin(stdin).Execute(ctx, inventory, logger)
 }

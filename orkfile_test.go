@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/apsdehal/go-logger"
 	"github.com/stretchr/testify/assert"
@@ -240,7 +243,7 @@ tasks:
 		f := New()
 		require.NoError(t, f.Parse([]byte(kase.yml)), kase.test)
 		// execute task
-		assert.NoError(t, f.Run(kase.task, log), kase.test)
+		assert.NoError(t, f.Run(context.Background(), kase.task, log), kase.test)
 
 		// for _, ln := range log.Logs(logger.DebugLevel) {
 		// 	fmt.Println(ln)
@@ -277,7 +280,7 @@ tasks:
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
-	assert.ErrorContains(t, f.Run("foo", log), "cyclic dependency")
+	assert.ErrorContains(t, f.Run(context.Background(), "foo", log), "cyclic dependency")
 }
 
 func Test_Orkfile_Dependency_DoesNotExist(t *testing.T) {
@@ -291,7 +294,50 @@ tasks:
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
-	assert.ErrorContains(t, f.Run("foo", log), "dependency bar does not exist")
+	assert.ErrorContains(t, f.Run(context.Background(), "foo", log), "dependency bar does not exist")
+}
+
+func Test_TaskAction_CanBeCancelled(t *testing.T) {
+	yml := `
+tasks:
+  - name: read
+    expand_env: false
+    actions:
+      - bash -c "while read s; do echo ${s}; done;"
+`
+	b := bytes.NewBufferString("")
+	f := New().WithStdin(b)
+	assert.NoError(t, f.Parse([]byte(yml)))
+
+	log := NewMockLogger()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func(o *Orkfile) {
+		o.Run(ctx, "read", log)
+	}(f)
+
+	var err error
+	_, err = b.WriteString("hello\n")
+	assert.NoError(t, err)
+	_, err = b.WriteString("goodbye\n")
+	assert.NoError(t, err)
+
+	// wait for the input to be ingested by the process
+	time.Sleep(100 * time.Millisecond)
+
+	// ok, let's cancel the process
+	cancel()
+	time.Sleep(50 * time.Millisecond)
+
+	_, err = b.WriteString("this will not be in the output\n")
+	assert.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+
+	outputs := strings.Join(log.Outputs(), "")
+	assert.Contains(t, outputs, "hello")
+	assert.Contains(t, outputs, "goodbye")
+	assert.NotContains(t, outputs, "this will not be in the output")
 }
 
 func Test_Orkfile_Task_Info(t *testing.T) {
@@ -331,8 +377,8 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
-	assert.NoError(t, f.Run("bar", log))
-	assert.NoError(t, f.Run("foo", log))
+	assert.NoError(t, f.Run(context.Background(), "bar", log))
+	assert.NoError(t, f.Run(context.Background(), "foo", log))
 
 	outputs := log.Outputs()
 	require.Equal(t, 2, len(outputs))
@@ -384,7 +430,7 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
-	assert.NoError(t, f.Run("env_ordering", log))
+	assert.NoError(t, f.Run(context.Background(), "env_ordering", log))
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], target_val)
 }
@@ -405,7 +451,7 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
-	assert.NoError(t, f.Run("dir", log))
+	assert.NoError(t, f.Run(context.Background(), "dir", log))
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "hello")
 }
@@ -426,7 +472,7 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
-	assert.Error(t, f.Run("foo", log))
+	assert.Error(t, f.Run(context.Background(), "foo", log))
 
 	require.Equal(t, 2, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "failure")
@@ -436,7 +482,7 @@ tasks:
 func Test_Orkfile_Task_Does_Not_Exist(t *testing.T) {
 	f := New()
 	assert.NoError(t, f.Parse([]byte("")))
-	assert.ErrorContains(t, f.Run("foo", nil), "does not exist")
+	assert.ErrorContains(t, f.Run(context.Background(), "foo", nil), "does not exist")
 }
 
 func Test_Orkfile_RunDefaultTask(t *testing.T) {
@@ -453,7 +499,7 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
-	assert.NoError(t, f.RunDefault(log))
+	assert.NoError(t, f.RunDefault(context.Background(), log))
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "foo")
 }
@@ -462,7 +508,7 @@ func Test_Orkfile_RunDefaultTask_When_Task_DoesNot_Exist(t *testing.T) {
 	f := New()
 	assert.NoError(t, f.Parse([]byte("")))
 
-	assert.ErrorContains(t, f.RunDefault(nil), "default task")
+	assert.ErrorContains(t, f.RunDefault(context.Background(), nil), "default task")
 }
 
 func Test_Orkfile_ListAllTasks(t *testing.T) {
@@ -563,8 +609,8 @@ tasks:
 	}
 
 	// ok, run the two tasks
-	assert.NoError(t, f.Run("deploy.production.ping", log))
-	assert.NoError(t, f.Run("deploy.staging.ping", log))
+	assert.NoError(t, f.Run(context.Background(), "deploy.production.ping", log))
+	assert.NoError(t, f.Run(context.Background(), "deploy.staging.ping", log))
 
 	// test the command outputs?
 	expected := []string{

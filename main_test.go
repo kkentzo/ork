@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -62,7 +63,7 @@ func Test_Ork_Command(t *testing.T) {
 	for _, kase := range kases {
 		logger := NewMockLogger()
 		kase.args = append([]string{"exe", "-p", orkfile_path}, kase.args...)
-		require.NoError(t, runApp(kase.args, logger), kase.description)
+		require.NoError(t, runApp(context.Background(), kase.args, logger), kase.description)
 		out := logger.Outputs()
 		require.Equal(t, len(kase.output), len(out), kase.description)
 		for i := 0; i < len(kase.output); i++ {
@@ -95,7 +96,7 @@ func Test_Ork_Command_Errors(t *testing.T) {
 	for _, kase := range kases {
 		log := NewMockLogger()
 		kase.args = append([]string{"exe", "-p", orkfile_path}, kase.args...)
-		err := runApp(kase.args, log)
+		err := runApp(context.Background(), kase.args, log)
 		require.Error(t, err, kase.description)
 		assert.Equal(t, kase.errmsg, err.Error(), kase.description)
 	}
@@ -108,7 +109,7 @@ func Test_Ork_Command_MalformedOrkfile(t *testing.T) {
 
 	log := NewMockLogger()
 	args := []string{"exe", "-p", orkfile_path}
-	err := runApp(args, log)
+	err := runApp(context.Background(), args, log)
 	assert.ErrorContains(t, err, "failed to parse Orkfile")
 }
 
@@ -121,16 +122,16 @@ func Test_Ork_Command_LogLevel(t *testing.T) {
 
 	// let's try an invalid log level
 	args := []string{"exe", "-p", orkfile_path, "-l", "invalid"}
-	err := runApp(args, log)
+	err := runApp(context.Background(), args, log)
 	assert.ErrorContains(t, err, "unknown log level: invalid")
 
 	// let's try the default log level
 	args = []string{"exe", "-p", orkfile_path, "foo"}
-	assert.NoError(t, runApp(args, log))
+	assert.NoError(t, runApp(context.Background(), args, log))
 	assert.Empty(t, log.Logs(logger.DebugLevel))
 
 	// let's try the debug log level
 	args = []string{"exe", "-p", orkfile_path, "-l", "debug", "foo"}
-	assert.NoError(t, runApp(args, log))
+	assert.NoError(t, runApp(context.Background(), args, log))
 	assert.NotEmpty(t, log.Logs(logger.DebugLevel))
 }

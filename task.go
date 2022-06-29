@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -17,6 +19,7 @@ var (
 type LabeledTask struct {
 	label string // the task's fully qualified name (the one visible to the user)
 	*Task
+	stdin io.Reader
 }
 
 type Task struct {
@@ -36,15 +39,20 @@ type Task struct {
 	DynamicTasks   []*Task  `yaml:"generate"`
 }
 
+func (lt *LabeledTask) WithStdin(stdin io.Reader) *LabeledTask {
+	lt.stdin = stdin
+	return lt
+}
+
 // execute the task
-func (lt *LabeledTask) Execute(inventory Inventory, logger Logger) error {
-	return lt.execute(inventory, logger, graph{})
+func (lt *LabeledTask) Execute(ctx context.Context, inventory Inventory, logger Logger) error {
+	return lt.execute(ctx, inventory, logger, graph{})
 }
 
 // execute the task workflow
 // return the first encountered error (if any)
 // cdt records dependencies between tasks in the form: key: parent, value: child
-func (lt *LabeledTask) execute(inventory Inventory, logger Logger, cdt graph) (err error) {
+func (lt *LabeledTask) execute(ctx context.Context, inventory Inventory, logger Logger, cdt graph) (err error) {
 	// handle success/failure hooks
 	defer func() {
 		logger.Debugf("[%s] executing post-action hooks", lt.label)
@@ -59,7 +67,7 @@ func (lt *LabeledTask) execute(inventory Inventory, logger Logger, cdt graph) (e
 			actions = lt.OnFailure
 		}
 		for _, a := range actions {
-			if err := executeAction(a, lt.ExpandEnv, lt.WorkingDir, logger); err != nil {
+			if err := executeAction(ctx, a, lt.ExpandEnv, lt.WorkingDir, logger, lt.stdin); err != nil {
 				logger.Errorf("[%s] failed to execute hook: %v", lt.label, err)
 			}
 		}
@@ -83,7 +91,7 @@ func (lt *LabeledTask) execute(inventory Inventory, logger Logger, cdt graph) (e
 
 		// ok, let's run it
 		cdt[lt.Task] = child.Task
-		if err = child.execute(inventory, logger, cdt); err != nil {
+		if err = child.execute(ctx, inventory, logger, cdt); err != nil {
 			return
 		}
 	}
@@ -101,7 +109,7 @@ func (lt *LabeledTask) execute(inventory Inventory, logger Logger, cdt graph) (e
 	logger.Debugf("[%s] executing actions", lt.label)
 	for idx, action := range lt.Actions {
 		logger.Infof("[%s] %s", lt.label, lt.Actions[idx])
-		if err = executeAction(action, lt.ExpandEnv, lt.WorkingDir, logger); err != nil {
+		if err = executeAction(ctx, action, lt.ExpandEnv, lt.WorkingDir, logger, lt.stdin); err != nil {
 			err = fmt.Errorf("[%s] %v", lt.label, err)
 			return
 		}
@@ -121,12 +129,12 @@ func (t *Task) IsActionable() bool {
 	return len(t.Actions) > 0 || len(t.DependsOn) > 0
 }
 
-func executeAction(action string, expandEnv *bool, chdir string, logger Logger) error {
+func executeAction(ctx context.Context, action string, expandEnv *bool, chdir string, logger Logger, stdin io.Reader) error {
 	ee := true
 	if expandEnv != nil {
 		ee = *expandEnv
 	}
-	a := NewAction(action).WithStdout(logger).WithWorkingDirectory(chdir).WithEnvExpansion(ee)
+	a := NewAction(ctx, action).WithStdout(logger).WithWorkingDirectory(chdir).WithEnvExpansion(ee).WithStdin(stdin)
 	if err := a.Execute(); err != nil {
 		return err
 	}
