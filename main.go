@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"regexp"
 	"sort"
 	"syscall"
 
@@ -30,6 +31,15 @@ OPTIONS:
 `
 }
 
+// return all the labels in the orkfile in alphabetical order
+func AllLabels(f *Orkfile) []string {
+	labels := f.Labels(Actionable)
+	sort.Slice(labels, func(i, j int) bool {
+		return labels[i] < labels[j]
+	})
+	return labels
+}
+
 func runApp(ctx context.Context, args []string, logger Logger) error {
 	app := cli.App{
 		Name:        "ork",
@@ -46,6 +56,11 @@ func runApp(ctx context.Context, args []string, logger Logger) error {
 				Aliases: []string{"l"},
 				Usage:   "log level (one of 'info', 'error', 'debug')",
 				Value:   LOG_LEVEL_INFO,
+			},
+			&cli.StringFlag{
+				Name:    "search",
+				Aliases: []string{"s"},
+				Usage:   "print the ork task labels that contain the supplied regex term",
 			},
 			&cli.BoolFlag{
 				Name:    "info",
@@ -96,7 +111,20 @@ func runApp(ctx context.Context, args []string, logger Logger) error {
 				return fmt.Errorf("failed to parse Orkfile: %v", err)
 			}
 
-			// read in task labels
+			// do we just need to search the labels?
+			if term := c.String("search"); term != "" {
+				labels := AllLabels(orkfile)
+				for _, label := range labels {
+					if matched, err := regexp.MatchString(term, label); err != nil {
+						logger.Fatalf("search term %s is an invalid regular expression", term)
+					} else if matched {
+						logger.Output(orkfile.Info(label) + "\n")
+					}
+				}
+				return nil
+			}
+
+			// read in requested task labels
 			labels := c.Args().Slice()
 
 			// if no tasks are requested, then we
@@ -105,10 +133,7 @@ func runApp(ctx context.Context, args []string, logger Logger) error {
 			if len(labels) == 0 {
 				if c.Bool("info") {
 					// get tasks and sort them by name
-					labels := orkfile.Labels(Actionable)
-					sort.Slice(labels, func(i, j int) bool {
-						return labels[i] < labels[j]
-					})
+					labels := AllLabels(orkfile)
 					for _, label := range labels {
 						logger.Output(orkfile.Info(label) + "\n")
 					}

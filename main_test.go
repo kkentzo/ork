@@ -135,3 +135,53 @@ func Test_Ork_Command_LogLevel(t *testing.T) {
 	assert.NoError(t, runApp(context.Background(), args, log))
 	assert.NotEmpty(t, log.Logs(logger.DebugLevel))
 }
+
+func Test_Ork_Command_Search(t *testing.T) {
+	orkfile_path := "Orkfile.search_tests.yml"
+	os.WriteFile(orkfile_path, []byte(yml), os.ModePerm)
+	defer os.Remove(orkfile_path)
+
+	kases := []struct {
+		description string
+		term        string
+		results     []string
+	}{
+		{"contains foo", "foo", []string{"[foo] i am foo\n", "[foo.bar] <no description>\n"}},
+		{"match foo and bar", "foo(\\.bar)?", []string{"[foo] i am foo\n", "[foo.bar] <no description>\n"}},
+		{"foo only", "^foo$", []string{"[foo] i am foo\n"}},
+		{"match bar but not foo", "bar", []string{"[foo.bar] <no description>\n"}},
+		{"no match", "baz", []string{}},
+	}
+
+	for _, kase := range kases {
+		logger := NewMockLogger()
+		args := []string{"exe", "-p", orkfile_path, "-s", kase.term}
+		require.NoError(t, runApp(context.Background(), args, logger), kase.description)
+
+		out := logger.Outputs()
+		require.Equal(t, len(kase.results), len(out), kase.description)
+		for i := 0; i < len(kase.results); i++ {
+			assert.Equal(t, kase.results[i], out[i], kase.description)
+		}
+
+	}
+}
+
+func Test_Ork_Command_Search_Error(t *testing.T) {
+	orkfile_path := "Orkfile.search_tests_error.yml"
+	os.WriteFile(orkfile_path, []byte(yml), os.ModePerm)
+	defer os.Remove(orkfile_path)
+
+	invalid_term := `g(-z]+ng`
+
+	log := NewMockLogger()
+	args := []string{"exe", "-p", orkfile_path, "-s", invalid_term}
+	require.NoError(t, runApp(context.Background(), args, log))
+
+	logs := log.Logs(logger.CriticalLevel)
+	// here we have 2 entries because the mock version of Fatalf
+	// does not exit the program
+	assert.Len(t, logs, 2)
+
+	assert.Equal(t, "search term g(-z]+ng is an invalid regular expression", logs[0])
+}
