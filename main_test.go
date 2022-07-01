@@ -172,16 +172,20 @@ func Test_Ork_Command_Search_Error(t *testing.T) {
 	os.WriteFile(orkfile_path, []byte(yml), os.ModePerm)
 	defer os.Remove(orkfile_path)
 
-	invalid_term := `g(-z]+ng`
+	kases := []struct {
+		description string
+		term        string
+		errmsg      string
+	}{
+		{"invalid regex", `g(-z]+ng`, "invalid regular expression"},
+		{"no search term provided", "", "no search term provided"},
+	}
 
-	log := NewMockLogger()
-	args := []string{"exe", "-p", orkfile_path, "-s", invalid_term}
-	require.NoError(t, runApp(context.Background(), args, log))
+	for _, kase := range kases {
+		logger := NewMockLogger()
+		args := []string{"exe", "-p", orkfile_path, "-s", kase.term}
+		err := runApp(context.Background(), args, logger)
 
-	logs := log.Logs(logger.CriticalLevel)
-	// here we have 2 entries because the mock version of Fatalf
-	// does not exit the program
-	assert.Len(t, logs, 2)
-
-	assert.Equal(t, "search term g(-z]+ng is an invalid regular expression", logs[0])
+		assert.ErrorContains(t, err, kase.errmsg)
+	}
 }

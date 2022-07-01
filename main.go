@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -112,11 +113,15 @@ func runApp(ctx context.Context, args []string, logger Logger) error {
 			}
 
 			// do we just need to search the labels?
-			if term := c.String("search"); term != "" {
+			if c.IsSet("search") {
+				term := c.String("search")
+				if term == "" {
+					return errors.New("no search term provided to -s")
+				}
 				labels := AllLabels(orkfile)
 				for _, label := range labels {
 					if matched, err := regexp.MatchString(term, label); err != nil {
-						logger.Fatalf("search term %s is an invalid regular expression", term)
+						return fmt.Errorf("search term %s is an invalid regular expression", term)
 					} else if matched {
 						logger.Output(orkfile.Info(label) + "\n")
 					}
