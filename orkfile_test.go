@@ -20,7 +20,6 @@ func Test_Orkfiles(t *testing.T) {
 		test    string
 		yml     string
 		task    string
-		errmsg  string
 		outputs []string
 	}{
 		// ===================================
@@ -259,6 +258,16 @@ tasks:
 
 func Test_EmptyOrkfile(t *testing.T) {
 	assert.NoError(t, New().Parse([]byte("")))
+}
+
+func Test_Orkfile_Task_CanNot_Include_DefaultSeparator(t *testing.T) {
+	yml := fmt.Sprintf(`
+tasks:
+  - name: foo%sbar
+`, DEFAULT_TASK_GROUP_SEP)
+
+	err := New().Parse([]byte(yml))
+	assert.ErrorContains(t, err, "can not contain the task group separator")
 }
 
 func Test_Orkfile_PreventsCyclicDependencyDetection(t *testing.T) {
