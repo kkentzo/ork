@@ -7,3 +7,5 @@ builds:
     goarch:
       - amd64
       - arm64
+    ldflags:
+      - -s -w -X main.GitCommit={{.Env.GITHUB_SHA}} -X main.OrkVersion={{.Env.GITHUB_REF_NAME}}
