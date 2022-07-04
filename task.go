@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -134,10 +135,15 @@ func executeAction(ctx context.Context, action string, expandEnv *bool, chdir st
 	if expandEnv != nil {
 		ee = *expandEnv
 	}
-	a := NewAction(ctx, action).WithStdout(logger).WithWorkingDirectory(chdir).WithEnvExpansion(ee).WithStdin(stdin)
+	a := NewAction(action).WithStdout(logger).WithWorkingDirectory(chdir).WithEnvExpansion(ee).WithStdin(stdin)
 	if err := a.Execute(); err != nil {
 		return err
 	}
-	return nil
-
+	// should we proceed to the next action?
+	select {
+	case <-ctx.Done():
+		return errors.New("C-c received")
+	default:
+		return nil
+	}
 }

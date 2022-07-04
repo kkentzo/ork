@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -15,18 +14,16 @@ type Action struct {
 	chdir     string
 	stdin     io.Reader
 	stdout    io.Writer
-	ctx       context.Context
 	logger    Logger
 	expandEnv bool
 }
 
-func NewAction(ctx context.Context, statement string) *Action {
+func NewAction(statement string) *Action {
 	return &Action{
 		statement: statement,
 		stdin:     os.Stdin,
 		stdout:    os.Stdout,
 		expandEnv: true,
-		ctx:       ctx,
 	}
 }
 
@@ -57,7 +54,7 @@ func (a *Action) Execute() error {
 	if a.expandEnv {
 		a.statement = os.ExpandEnv(a.statement)
 	}
-	cmd, err := createCommand(a.ctx, a.statement)
+	cmd, err := createCommand(a.statement)
 	if err != nil {
 		return err
 	}
@@ -82,7 +79,7 @@ func (a *Action) Execute() error {
 	return nil
 }
 
-func createCommand(ctx context.Context, statement string) (*exec.Cmd, error) {
+func createCommand(statement string) (*exec.Cmd, error) {
 	var name string
 	var args []string
 
@@ -94,5 +91,5 @@ func createCommand(ctx context.Context, statement string) (*exec.Cmd, error) {
 		name = fields[0]
 		args = fields[1:]
 	}
-	return exec.CommandContext(ctx, name, args...), nil
+	return exec.Command(name, args...), nil
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,7 +20,7 @@ func Test_Action_Execute_Errors(t *testing.T) {
 
 	for _, kase := range kases {
 		logger := NewMockLogger()
-		action := NewAction(context.Background(), kase.statement).WithStdout(logger)
+		action := NewAction(kase.statement).WithStdout(logger)
 		assert.ErrorContains(t, action.Execute(), kase.errmsg)
 		if kase.output != noOutput {
 			assert.Contains(t, logger.Outputs(), kase.output)
@@ -34,7 +33,7 @@ func Test_Action_Can_Accept_StandardInput(t *testing.T) {
 	b := bytes.NewBufferString("hello\n")
 	// we need to disable env expansion in statement so that `$s` is not replaced
 	// with empty space (`$s` will be set during command execution, not before)
-	action := NewAction(context.Background(), "bash -c \"read s && echo $s\"").
+	action := NewAction("bash -c \"read s && echo $s\"").
 		WithStdin(b).
 		WithEnvExpansion(false).
 		WithStdout(logger)

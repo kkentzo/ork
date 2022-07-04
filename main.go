@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"regexp"
 	"sort"
-	"syscall"
 
 	"github.com/urfave/cli/v2"
 )
@@ -173,12 +172,16 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigs, os.Interrupt)
 	go func(cancel context.CancelFunc) {
+		// here, we catch the SIGINT signal to prevent the parent process (ork)
+		// from being immediately interrupted (and, hence, killed)
+		// we rely on the fact that the interrupt signal (SIGINT) will be sent
+		// to the entire process group by the shell
+		// so it will be received by the current action (os.Process) as well
 		<-sigs
-		// the cancel() call will cause the process to be killed
-		// this means that runApp() will return an error
-		// that will be treated as fatal below
+		// if this happens, then we need to stop the workflow, so that
+		// no more actions are executed
 		cancel()
 	}(cancel)
 

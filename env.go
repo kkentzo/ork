@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"os"
 	"regexp"
@@ -79,7 +78,7 @@ func parseEnvTokens(statement string, greedyEnvSubst bool) []envToken {
 func (e envToken) expand() (out string, err error) {
 	if e.isAction {
 		buf := bytes.NewBuffer([]byte{})
-		action := NewAction(context.Background(), e.value).WithStdout(buf).WithEnvExpansion(false)
+		action := NewAction(e.value).WithStdout(buf).WithEnvExpansion(false)
 		if err = action.Execute(); err != nil {
 			return
 		}
