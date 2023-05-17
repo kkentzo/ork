@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 type graph map[*Task]*Task
@@ -73,6 +74,19 @@ func (lt *LabeledTask) execute(ctx context.Context, inventory Inventory, logger 
 			}
 		}
 	}()
+
+	// let's visit and execute any parent tasks first recursively
+	tokens := strings.Split(lt.label, DEFAULT_TASK_GROUP_SEP)
+	parentTaskLabel := strings.Join(tokens[0:len(tokens)-1], DEFAULT_TASK_GROUP_SEP)
+	if parentTaskLabel != "" {
+		parent := inventory.Find(parentTaskLabel)
+		if parent == nil {
+			return fmt.Errorf("parent task %s does not exist", parentTaskLabel)
+		}
+		if err := parent.WithStdin(lt.stdin).execute(ctx, inventory, logger, cdt); err != nil {
+			return err
+		}
+	}
 
 	// first, execute all dependencies
 	logger.Debugf("[%s] executing dependencies", lt.label)

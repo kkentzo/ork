@@ -112,19 +112,25 @@ tasks:
 		},
 		// ===================================
 		{
-			test: "parent task's env is visible in nested task",
+			test: "parent tasks' envs are visible in nested tasks",
 			yml: `
 tasks:
-  - name: foo
+  - name: a
     env:
-      - MY_VAR_2: foo
+      - A_MY_VAR: a
     tasks:
-      - name: bar
-        actions:
-          - echo $MY_VAR_2
+      - name: b
+        env:
+          - B_MY_VAR: b
+        tasks:
+          - name: c
+            env:
+              - C_MY_VAR: c
+            actions:
+              - echo "${A_MY_VAR}${B_MY_VAR}${C_MY_VAR}"
 `,
-			task:    fmt.Sprintf("foo%sbar", DEFAULT_TASK_GROUP_SEP),
-			outputs: []string{"foo"},
+			task:    fmt.Sprintf("a%sb%sc", DEFAULT_TASK_GROUP_SEP, DEFAULT_TASK_GROUP_SEP),
+			outputs: []string{"abc"},
 		},
 		// ===================================
 		{
@@ -228,10 +234,29 @@ tasks:
 			task:    "foo",
 			outputs: []string{"hello from python"},
 		},
+		// ===================================
+		{
+			test: "task dependency should have access to its  env",
+			yml: `
+tasks:
+  - name: parent
+    env:
+      - VAR: a
+    tasks:
+      - name: a
+        actions:
+          - echo "var=${VAR}"
+  - name: child
+    depends_on:
+      - parent.a
+`,
+			task:    "child",
+			outputs: []string{"var=a"},
+		},
 	}
 
 	// set this to a kase.test value to run one test only
-	only_kase := "command substitution in env"
+	only_kase := ""
 
 	for _, kase := range kases {
 		if only_kase != "" && only_kase != kase.test {
@@ -244,9 +269,9 @@ tasks:
 		// execute task
 		assert.NoError(t, f.Run(context.Background(), kase.task, log), kase.test)
 
-		// for _, ln := range log.Logs(logger.DebugLevel) {
-		// 	fmt.Println(ln)
-		// }
+		for _, ln := range log.Logs(logger.DebugLevel) {
+			fmt.Println(ln)
+		}
 		// check expected outputs
 		outputs := log.Outputs()
 		require.Equal(t, len(kase.outputs), len(outputs), kase.test)

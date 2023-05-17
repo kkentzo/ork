@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -61,7 +60,12 @@ func (f *Orkfile) Run(ctx context.Context, label string, logger Logger) error {
 			return fmt.Errorf("failed to execute global task: %v", err)
 		}
 	}
-	return run(ctx, label, f.inventory, logger, f.stdin)
+	task := f.inventory.Find(label)
+	if task == nil {
+		return fmt.Errorf("task %s does not exist", label)
+	}
+
+	return task.WithStdin(f.stdin).Execute(ctx, f.inventory, logger)
 }
 
 // run the default task (if any)
@@ -94,19 +98,4 @@ func (f *Orkfile) Labels(sel TaskSelector) []string {
 
 func (f *Orkfile) Env() []Env {
 	return f.Global.Env
-}
-
-func run(ctx context.Context, label string, inventory Inventory, logger Logger, stdin io.Reader) error {
-	task := inventory.Find(label)
-	if task == nil {
-		return fmt.Errorf("task %s does not exist", label)
-	}
-	tokens := strings.Split(label, DEFAULT_TASK_GROUP_SEP)
-	parentTaskLabel := strings.Join(tokens[0:len(tokens)-1], DEFAULT_TASK_GROUP_SEP)
-	if parentTaskLabel != "" {
-		if err := run(ctx, parentTaskLabel, inventory, logger, stdin); err != nil {
-			return err
-		}
-	}
-	return task.WithStdin(stdin).Execute(ctx, inventory, logger)
 }
