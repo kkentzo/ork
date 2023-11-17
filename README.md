@@ -346,6 +346,6 @@ Run `ork -h` for program options.
 guides below to enable system-wide auto-completion (courtesy of the
 excellent [cli](https://github.com/urfave/cli) library):
 
-- [bash instructions](https://github.com/urfave/cli/blob/main/docs/v2/manual.md#distribution-and-persistent-autocompletion)
-- [zsh support](https://github.com/urfave/cli/blob/main/docs/v2/manual.md#zsh-support)
-- [PowerShell support](https://github.com/urfave/cli/blob/main/docs/v2/manual.md#powershell-support)
+- [bash instructions](https://github.com/urfave/cli/blob/main/docs/v2/examples/bash-completions.md)
+- [zsh support](https://github.com/urfave/cli/blob/main/docs/v2/examples/bash-completions.md#zsh-support)
+- [PowerShell support](https://github.com/urfave/cli/blob/main/docs/v2/examples/bash-completions.md#powershell-support)
