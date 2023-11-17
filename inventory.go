@@ -16,9 +16,6 @@ func (i Inventory) Populate(tasks []*Task) error {
 func (i Inventory) populate(tasks []*Task, prefix string) error {
 	for _, task := range tasks {
 		taskName := task.Name
-		if strings.Contains(taskName, DEFAULT_TASK_GROUP_SEP) {
-			return fmt.Errorf("[%s] task label can not contain the task group separator `%s`", taskName, DEFAULT_TASK_GROUP_SEP)
-		}
 		if prefix != "" {
 			taskName = strings.Join([]string{prefix, taskName}, DEFAULT_TASK_GROUP_SEP)
 		}

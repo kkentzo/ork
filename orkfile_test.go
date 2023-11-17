@@ -253,6 +253,18 @@ tasks:
 			task:    "child",
 			outputs: []string{"var=a"},
 		},
+		// ===================================
+		{
+			test: "task names can contain the default separator",
+			yml: fmt.Sprintf(`
+tasks:
+  - name: a%sb
+    actions:
+      - echo foo
+`, DEFAULT_TASK_GROUP_SEP),
+			task:    fmt.Sprintf("a%sb", DEFAULT_TASK_GROUP_SEP),
+			outputs: []string{"foo"},
+		},
 	}
 
 	// set this to a kase.test value to run one test only
@@ -283,16 +295,6 @@ tasks:
 
 func Test_EmptyOrkfile(t *testing.T) {
 	assert.NoError(t, New().Parse([]byte("")))
-}
-
-func Test_Orkfile_Task_CanNot_Include_DefaultSeparator(t *testing.T) {
-	yml := fmt.Sprintf(`
-tasks:
-  - name: foo%sbar
-`, DEFAULT_TASK_GROUP_SEP)
-
-	err := New().Parse([]byte(yml))
-	assert.ErrorContains(t, err, "can not contain the task group separator")
 }
 
 func Test_Orkfile_PreventsCyclicDependencyDetection(t *testing.T) {

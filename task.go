@@ -79,12 +79,13 @@ func (lt *LabeledTask) execute(ctx context.Context, inventory Inventory, logger 
 	tokens := strings.Split(lt.label, DEFAULT_TASK_GROUP_SEP)
 	parentTaskLabel := strings.Join(tokens[0:len(tokens)-1], DEFAULT_TASK_GROUP_SEP)
 	if parentTaskLabel != "" {
-		parent := inventory.Find(parentTaskLabel)
-		if parent == nil {
-			return fmt.Errorf("parent task %s does not exist", parentTaskLabel)
-		}
-		if err := parent.WithStdin(lt.stdin).execute(ctx, inventory, logger, cdt); err != nil {
-			return err
+		// we will accept not finding the parent task because it may not really exist as a separate task
+		// this is the case where a user has specified explicitly the task a.b in the Orkfile
+		// instead of nesting the task b under task a
+		if parent := inventory.Find(parentTaskLabel); parent != nil {
+			if err := parent.WithStdin(lt.stdin).execute(ctx, inventory, logger, cdt); err != nil {
+				return err
+			}
 		}
 	}
 

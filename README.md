@@ -71,7 +71,7 @@ A task can contain any kind of executable actions, e.g.:
 
 ```yaml
 tasks:
-  - name: say/hello
+  - name: say.hello
     description: Say hello from python
     actions:
       - python -c "import sys; sys.stdout.write('hello from python')"
