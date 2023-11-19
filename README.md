@@ -177,7 +177,7 @@ tasks:
   - name: foo
     env:
       - A: a
-        B: $[bash -c "echo $A"]
+        B: ${A}
     actions:
       - echo $B
 ```
@@ -193,7 +193,7 @@ tasks:
   - name: foo
     env:
       - A: a
-      - B: $[bash -c "echo $A"]
+      - B: ${A}
     actions:
       - echo $B
 ```
