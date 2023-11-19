@@ -282,6 +282,42 @@ tasks:
 			task:    fmt.Sprintf("a%sb", DEFAULT_TASK_GROUP_SEP),
 			outputs: []string{"foo"},
 		},
+		// ===================================
+		{
+			test: "task should run if a required env variable is available",
+			yml: `
+tasks:
+  - name: parent
+    env:
+      - A: a
+  - name: child
+    require:
+      exists:
+        - A
+    actions:
+      - echo $A
+`,
+			task:    "child",
+			outputs: []string{"a\n"},
+		},
+		// ===================================
+		{
+			test: "task should run if a required env has the expected value",
+			yml: `
+tasks:
+  - name: parent
+    env:
+      - A: a
+  - name: child
+    require:
+      equals:
+        A: a
+    actions:
+      - echo $A
+`,
+			task:    "child",
+			outputs: []string{"a\n"},
+		},
 	}
 
 	// set this to a kase.test value to run one test only
@@ -334,6 +370,59 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 	assert.ErrorContains(t, f.Run(context.Background(), "foo", log), "cyclic dependency")
+}
+
+func Test_Orkfile_TaskShouldFail_WhenExistsRequirement_NotPresent(t *testing.T) {
+	yml := `
+tasks:
+  - name: a
+    require:
+      exists:
+        - FOO_1234
+    actions:
+      - echo $A
+`
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml)))
+	log := NewMockLogger()
+	assert.ErrorContains(t, f.Run(context.Background(), "a", log), "failed requirement")
+}
+
+func Test_Orkfile_TaskShouldFail_WhenEqualsRequirement_NotPresent(t *testing.T) {
+	yml := `
+tasks:
+  - name: a
+    require:
+      equals:
+        GHTYT: kjaldasdashasjk
+    actions:
+      - echo $A
+`
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml)))
+	log := NewMockLogger()
+	assert.ErrorContains(t, f.Run(context.Background(), "a", log), "expected value but is not defined")
+}
+
+func Test_Orkfile_TaskShouldFail_WhenEqualsRequirement_PresentButNotEqual(t *testing.T) {
+	yml := `
+tasks:
+  - name: parent
+    env:
+      - A: 5
+  - name: a
+    depends_on:
+      - parent
+    require:
+      equals:
+        A: 6
+    actions:
+      - echo $A
+`
+	f := New()
+	assert.NoError(t, f.Parse([]byte(yml)))
+	log := NewMockLogger()
+	assert.ErrorContains(t, f.Run(context.Background(), "a", log), "does not match its expected value")
 }
 
 func Test_Orkfile_Dependency_DoesNotExist(t *testing.T) {

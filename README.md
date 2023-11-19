@@ -238,6 +238,63 @@ tasks:
       - ...
 ```
 
+### Task Requirements
+
+Tasks can express requirements in terms of the environment variables
+that should be present and/or have specific expected values. If a
+requirement is not met, then the task stops with an error.
+
+Requirements can be expressed in two ways.
+
+The first is to require the existence of an environment variable like
+so:
+
+```yaml
+tasks:
+  - name: a
+    require:
+      exists:
+        - A
+    actions:
+      - echo $A
+```
+
+Task `a` will fail, since the environment variable `A` is not defined
+when task `a` is executed. In contrast, given the following Orkfile,
+task `b` will succeed:
+
+```yaml
+tasks:
+  - name: a
+    env:
+      - A: a
+  - name: b
+    require:
+      exists:
+        - A
+    actions:
+      - echo $A
+```
+
+Tasks can also specify requirements in terms of the expected value of
+environment variables:
+
+```yaml
+tasks:
+  - name: a
+    env:
+      - A: a
+  - name: b
+    require:
+      equals:
+        A: foo
+    actions:
+      - echo $A
+```
+
+Task `b` will fail since, when executed, the environment variable `A`
+has the value `a` instead of the expected value `foo`.
+
 ### Task Success/Error Hooks
 
 Orkfiles support post-action hooks for individual tasks, e.g.:

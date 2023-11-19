@@ -24,21 +24,27 @@ type LabeledTask struct {
 	stdin io.Reader
 }
 
+type Requirements struct {
+	Exists []string          `yaml:"exists"`
+	Equals map[string]string `yaml:"equals"`
+}
+
 type Task struct {
 	label          string
-	Name           string   `yaml:"name"`
-	Default        string   `yaml:"default"` // used in the global task
-	Description    string   `yaml:"description"`
-	WorkingDir     string   `yaml:"working_dir"`
-	Env            []Env    `yaml:"env"`
-	ExpandEnv      *bool    `yaml:"expand_env"`
-	GreedyEnvSubst *bool    `yaml:"env_subst_greedy"`
-	Actions        []string `yaml:"actions"`
-	DependsOn      []string `yaml:"depends_on"`
-	Tasks          []*Task  `yaml:"tasks"`
-	OnSuccess      []string `yaml:"on_success"`
-	OnFailure      []string `yaml:"on_failure"`
-	DynamicTasks   []*Task  `yaml:"generate"`
+	Name           string        `yaml:"name"`
+	Default        string        `yaml:"default"` // used in the global task
+	Description    string        `yaml:"description"`
+	WorkingDir     string        `yaml:"working_dir"`
+	Env            []Env         `yaml:"env"`
+	ExpandEnv      *bool         `yaml:"expand_env"`
+	GreedyEnvSubst *bool         `yaml:"env_subst_greedy"`
+	Actions        []string      `yaml:"actions"`
+	DependsOn      []string      `yaml:"depends_on"`
+	Tasks          []*Task       `yaml:"tasks"`
+	OnSuccess      []string      `yaml:"on_success"`
+	OnFailure      []string      `yaml:"on_failure"`
+	DynamicTasks   []*Task       `yaml:"generate"`
+	Requirements   *Requirements `yaml:"require"`
 }
 
 func (lt *LabeledTask) WithStdin(stdin io.Reader) *LabeledTask {
@@ -112,6 +118,11 @@ func (lt *LabeledTask) execute(ctx context.Context, inventory Inventory, logger 
 		}
 	}
 
+	// are the requirements satisfied?
+	if err := lt.CheckRequirements(); err != nil {
+		return fmt.Errorf("[%s] failed requirement: %v", lt.label, err)
+	}
+
 	// apply the environment
 	logger.Debugf("[%s] applying task environment", lt.label)
 	for _, e := range lt.Env {
@@ -132,6 +143,27 @@ func (lt *LabeledTask) execute(ctx context.Context, inventory Inventory, logger 
 	}
 
 	return
+}
+
+func (lt *LabeledTask) CheckRequirements() error {
+	if lt.Requirements == nil {
+		return nil
+	}
+	for _, req := range lt.Requirements.Exists {
+		if _, exists := os.LookupEnv(req); !exists {
+			return fmt.Errorf("variable %s is not defined ", req)
+		}
+	}
+	for key, expected := range lt.Requirements.Equals {
+		value, exists := os.LookupEnv(key)
+		if !exists {
+			return fmt.Errorf("variable %s has an expected value but is not defined", key)
+		}
+		if value != expected {
+			return fmt.Errorf("variable %s exists does not match its expected value", key)
+		}
+	}
+	return nil
 }
 
 func (t *Task) IsEnvSubstGreedy() bool {
