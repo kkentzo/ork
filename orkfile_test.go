@@ -178,7 +178,6 @@ tasks:
 		{
 			test: "env expansion can be disabled",
 			yml: `
-global:
 tasks:
   - name: foo
     expand_env: false
@@ -236,7 +235,7 @@ tasks:
 		},
 		// ===================================
 		{
-			test: "task dependency should have access to its  env",
+			test: "task dependency should have access to its env",
 			yml: `
 tasks:
   - name: parent
