@@ -74,7 +74,7 @@ func parseEnvTokens(statement string, greedyEnvSubst bool) []envToken {
 
 // return the token's representation
 // either by executing the command
-// or by returning its value as is
+// or by returning its value with an expanded environment
 func (e envToken) expand() (out string, err error) {
 	if e.isAction {
 		buf := bytes.NewBuffer([]byte{})
@@ -85,7 +85,7 @@ func (e envToken) expand() (out string, err error) {
 		out = buf.String()
 
 	} else {
-		out = e.value
+		out = os.ExpandEnv(e.value)
 	}
 
 	if strings.HasSuffix(out, "\n") {

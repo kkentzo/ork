@@ -166,7 +166,7 @@ global:
 tasks:
   - name: foo
     env:
-      - MY_VAR_4: $[bash -c "echo $MY_VAR_5"]
+      - MY_VAR_4: ${MY_VAR_5}
     actions:
       - echo $MY_VAR_4
 `,
@@ -252,6 +252,24 @@ tasks:
 `,
 			task:    "child",
 			outputs: []string{"var=a"},
+		},
+		// ===================================
+		{
+			test: "task env should expand its own env",
+			yml: `
+tasks:
+  - name: a
+    env:
+      - FOO: foo
+    tasks:
+      - name: b
+        env:
+          - BAR: ${FOO}
+        actions:
+          - echo "${BAR}"
+`,
+			task:    "a.b",
+			outputs: []string{"foo"},
 		},
 		// ===================================
 		{
