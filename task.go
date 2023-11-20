@@ -155,12 +155,14 @@ func (lt *LabeledTask) CheckRequirements() error {
 		}
 	}
 	for key, expected := range lt.Requirements.Equals {
-		value, exists := os.LookupEnv(key)
+		actual, exists := os.LookupEnv(key)
 		if !exists {
-			return fmt.Errorf("variable %s has an expected value but is not defined", key)
+			return fmt.Errorf("variable %s has an expected value but does not exist in the environment", key)
 		}
-		if value != expected {
-			return fmt.Errorf("variable %s exists does not match its expected value", key)
+		// expand any environment variables in expected value
+		expected = os.ExpandEnv(expected)
+		if actual != expected {
+			return fmt.Errorf("variable %s exists but does not match its expected value", key)
 		}
 	}
 	return nil

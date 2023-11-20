@@ -257,17 +257,17 @@ tasks:
 			test: "task env should expand its own env",
 			yml: `
 tasks:
-  - name: a
+  - name: yth
     env:
-      - FOO: foo
+      - YTH: foo
     tasks:
-      - name: b
+      - name: cvs
         env:
-          - BAR: ${FOO}
+          - CVS: ${YTH}
         actions:
-          - echo "${BAR}"
+          - echo "${CVS}"
 `,
-			task:    "a.b",
+			task:    "yth.cvs",
 			outputs: []string{"foo"},
 		},
 		// ===================================
@@ -287,17 +287,19 @@ tasks:
 			test: "task should run if a required env variable is available",
 			yml: `
 tasks:
-  - name: parent
+  - name: kqs
     env:
-      - A: a
-  - name: child
+      - TYUI: a
+  - name: jho
+    depends_on:
+      - kqs
     require:
       exists:
-        - A
+        - TYUI
     actions:
-      - echo $A
+      - echo $TYUI
 `,
-			task:    "child",
+			task:    "jho",
 			outputs: []string{"a\n"},
 		},
 		// ===================================
@@ -305,17 +307,40 @@ tasks:
 			test: "task should run if a required env has the expected value",
 			yml: `
 tasks:
-  - name: parent
+  - name: kkl
     env:
       - A: a
-  - name: child
+  - name: fgy
+    depends_on:
+      - kkl
     require:
       equals:
         A: a
     actions:
       - echo $A
 `,
-			task:    "child",
+			task:    "fgy",
+			outputs: []string{"a\n"},
+		},
+		// ===================================
+		{
+			test: "task should run if a required env has the expected calculated value",
+			yml: `
+tasks:
+  - name: ght
+    env:
+      - QIO: a
+        BVF: a
+  - name: lch
+    depends_on:
+      - ght
+    require:
+      equals:
+        BVF: ${QIO}
+    actions:
+      - echo $BVF
+`,
+			task:    "lch",
 			outputs: []string{"a\n"},
 		},
 	}
@@ -391,38 +416,38 @@ tasks:
 func Test_Orkfile_TaskShouldFail_WhenEqualsRequirement_NotPresent(t *testing.T) {
 	yml := `
 tasks:
-  - name: a
+  - name: azfw
     require:
       equals:
         GHTYT: kjaldasdashasjk
     actions:
-      - echo $A
+      - echo ${GHTYT}
 `
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
-	assert.ErrorContains(t, f.Run(context.Background(), "a", log), "expected value but is not defined")
+	assert.ErrorContains(t, f.Run(context.Background(), "azfw", log), "expected value but does not exist")
 }
 
 func Test_Orkfile_TaskShouldFail_WhenEqualsRequirement_PresentButNotEqual(t *testing.T) {
 	yml := `
 tasks:
-  - name: parent
+  - name: qoc
     env:
-      - A: 5
-  - name: a
+      - QOC: 5
+  - name: sdw
     depends_on:
-      - parent
+      - qoc
     require:
       equals:
-        A: 6
+        QOC: 6
     actions:
-      - echo $A
+      - echo $QOC
 `
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
-	assert.ErrorContains(t, f.Run(context.Background(), "a", log), "does not match its expected value")
+	assert.ErrorContains(t, f.Run(context.Background(), "sdw", log), "does not match its expected value")
 }
 
 func Test_Orkfile_Dependency_DoesNotExist(t *testing.T) {
