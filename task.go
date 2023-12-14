@@ -82,16 +82,9 @@ func (lt *LabeledTask) execute(ctx context.Context, inventory Inventory, logger 
 	}()
 
 	// let's visit and execute any parent tasks first recursively
-	tokens := strings.Split(lt.label, DEFAULT_TASK_GROUP_SEP)
-	parentTaskLabel := strings.Join(tokens[0:len(tokens)-1], DEFAULT_TASK_GROUP_SEP)
-	if parentTaskLabel != "" {
-		// we will accept not finding the parent task because it may not really exist as a separate task
-		// this is the case where a user has specified explicitly the task a.b in the Orkfile
-		// instead of nesting the task b under task a
-		if parent := inventory.Find(parentTaskLabel); parent != nil {
-			if err := parent.WithStdin(lt.stdin).execute(ctx, inventory, logger, cdt); err != nil {
-				return err
-			}
+	if parent := findParent(lt.label, inventory); parent != nil {
+		if err := parent.WithStdin(lt.stdin).execute(ctx, inventory, logger, cdt); err != nil {
+			return err
 		}
 	}
 
@@ -177,6 +170,20 @@ func (t *Task) IsEnvSubstGreedy() bool {
 
 func (t *Task) IsActionable() bool {
 	return len(t.Actions) > 0 || len(t.DependsOn) > 0
+}
+
+// find and return the first parent of the current task if any
+// return nil if no parent was found
+func findParent(current string, inventory Inventory) *LabeledTask {
+	tokens := strings.Split(current, DEFAULT_TASK_GROUP_SEP)
+	n := len(tokens) - 1
+	for i := n; i > 0; i-- {
+		label := strings.Join(tokens[:i], DEFAULT_TASK_GROUP_SEP)
+		if parent := inventory.Find(label); parent != nil {
+			return parent
+		}
+	}
+	return nil
 }
 
 func executeAction(ctx context.Context, action string, expandEnv *bool, chdir string, logger Logger, stdin io.Reader) error {

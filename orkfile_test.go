@@ -343,16 +343,40 @@ tasks:
 			task:    "lch",
 			outputs: []string{"a\n"},
 		},
+		// ===================================
+		{
+			test: "task with dot separator in its name should be able to identify its parent task",
+			yml: `
+tasks:
+  - name: eyrwey
+    generate:
+      - name: sxbz
+        env:
+          - UYTRR: foo
+      - name: dsldp
+        env:
+          - UYTRR: bar
+    tasks:
+      - name: wytedbzm.gsjaxa
+        actions:
+          - echo ${UYTRR}
+`,
+			task:    "eyrwey.sxbz.wytedbzm.gsjaxa",
+			outputs: []string{"foo\n"},
+		},
 	}
 
 	// set this to a kase.test value to run one test only
 	only_kase := ""
+	// set this to LOG_LEVEL_DEBUG to enable debug-level logging
+	log_level := LOG_LEVEL_INFO
 
 	for _, kase := range kases {
 		if only_kase != "" && only_kase != kase.test {
 			continue
 		}
 		log := NewMockLogger()
+		log.SetLogLevel(log_level)
 		// parse orkfile
 		f := New()
 		require.NoError(t, f.Parse([]byte(kase.yml)), kase.test)
