@@ -67,7 +67,7 @@ func parseEnvTokens(statement string, greedyEnvSubst bool) []envToken {
 		tokens = append(tokens, envToken{statement[loc[0]+r1 : loc[1]-r2], true})
 	}
 	if c < len(statement) {
-		tokens = append(tokens, envToken{statement[c:len(statement)], false})
+		tokens = append(tokens, envToken{statement[c:], false})
 	}
 	return tokens
 }
