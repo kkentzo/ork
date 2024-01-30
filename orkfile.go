@@ -15,10 +15,9 @@ const (
 )
 
 type Orkfile struct {
-	Global *Task   `yaml:"global"`
-	Tasks  []*Task `yaml:"tasks"`
+	Default string  `yaml:"default"`
+	Tasks   []*Task `yaml:"tasks"`
 
-	global    *LabeledTask
 	inventory Inventory
 	stdin     io.Reader
 }
@@ -43,11 +42,6 @@ func (f *Orkfile) Parse(contents []byte) error {
 	if err := yaml.Unmarshal(contents, f); err != nil {
 		return err
 	}
-	// name the global task (if not already named)
-	if f.Global != nil {
-		f.global = &LabeledTask{label: "global", Task: f.Global}
-	}
-
 	// populate the task inventory
 	f.inventory = Inventory{}
 	return f.inventory.Populate(f.Tasks)
@@ -55,11 +49,6 @@ func (f *Orkfile) Parse(contents []byte) error {
 
 // run the requested task
 func (f *Orkfile) Run(ctx context.Context, label string, logger Logger) error {
-	if f.global != nil {
-		if err := f.global.WithStdin(f.stdin).Execute(ctx, f.inventory, logger); err != nil {
-			return fmt.Errorf("failed to execute global task: %v", err)
-		}
-	}
 	task := f.inventory.Find(label)
 	if task == nil {
 		return fmt.Errorf("task %s does not exist", label)
@@ -70,10 +59,10 @@ func (f *Orkfile) Run(ctx context.Context, label string, logger Logger) error {
 
 // run the default task (if any)
 func (f *Orkfile) RunDefault(ctx context.Context, logger Logger) error {
-	if f.Global == nil || f.Global.Default == "" {
+	if f.Default == "" {
 		return errors.New("default task has not been set")
 	}
-	return f.WithStdin(f.stdin).Run(ctx, f.Global.Default, logger)
+	return f.WithStdin(f.stdin).Run(ctx, f.Default, logger)
 }
 
 // return info for the requested task
@@ -94,8 +83,4 @@ func (f *Orkfile) GetTasks(sel TaskSelector) []*LabeledTask {
 
 func (f *Orkfile) Labels(sel TaskSelector) []string {
 	return f.inventory.Labels(sel)
-}
-
-func (f *Orkfile) Env() []Env {
-	return f.Global.Env
 }

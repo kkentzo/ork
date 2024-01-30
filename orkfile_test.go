@@ -24,44 +24,36 @@ func Test_Orkfiles(t *testing.T) {
 	}{
 		// ===================================
 		{
-			test: "no global section",
+			test: "env variables of dependencies are available within the task",
 			yml: `
 tasks:
   - name: foo
-    actions:
-      - echo foo
-`,
-			task:    "foo",
-			outputs: []string{"foo\n"},
-		},
-		// ===================================
-		{
-			test: "uses global env",
-			yml: `
-global:
-  env:
-    - GLOBAL_ENV: foo
-tasks:
-  - name: foo
+    depends_on:
+      - bar
     actions:
       - echo $GLOBAL_ENV
+  - name: bar
+    env:
+      - GLOBAL_ENV: foo
 `,
 			task:    "foo",
 			outputs: []string{"foo\n"},
 		},
 		// ===================================
 		{
-			test: "local env overrides global env",
+			test: "local env overrides dependency env",
 			yml: `
-global:
-  env:
-    - MY_VAR_1: bar
 tasks:
   - name: foo
+    depends_on:
+      - bar
     env:
       - MY_VAR_1: foo
     actions:
       - echo ${MY_VAR_1}
+  - name: bar
+    env:
+      - MY_VAR_1: bar
 `,
 			task:    "foo",
 			outputs: []string{"foo\n"},
@@ -73,12 +65,12 @@ tasks:
 tasks:
   - name: foo
     env:
-      - TASK: $[echo clean] $[echo clean]
+      - TASKS: $[echo version] $[echo version]
     actions:
-      - go run . $TASK
+      - echo ${TASKS}
 `,
 			task:    "foo",
-			outputs: []string{"rm -rf bin", "rm -rf bin"},
+			outputs: []string{"version version"},
 		},
 		// ===================================
 		{
@@ -160,15 +152,17 @@ tasks:
 		{
 			test: "outer env variables are available in inner tasks regardless of lex order",
 			yml: `
-global:
-  env:
-    - MY_VAR_5: bar
 tasks:
   - name: foo
+    depends_on:
+      - bar
     env:
       - MY_VAR_4: ${MY_VAR_5}
     actions:
       - echo $MY_VAR_4
+  - name: bar
+    env:
+      - MY_VAR_5: bar
 `,
 			task:    "foo",
 			outputs: []string{"bar"},
@@ -207,23 +201,25 @@ tasks:
 		{
 			test: "env can execute non-trivial bash statements",
 			yml: `
-global:
-  env:
-    - MY_VAR_6: production
 tasks:
   - name: foo
+    depends_on:
+      - bar
     env_subst_greedy: true
     env:
       - MY_VAR_7: $[bash -c "if [ \"${MY_VAR_6}\" == \"production\" ]; then echo production; else echo staging; fi"]
     actions:
       - echo $MY_VAR_7
+  - name: bar
+    env:
+      - MY_VAR_6: production
 `,
 			task:    "foo",
 			outputs: []string{"production"},
 		},
 		// ===================================
 		{
-			test: "action can execute arbitrary commands",
+			test: "shell is parameterizable",
 			yml: `
 tasks:
   - name: foo
@@ -388,6 +384,7 @@ tasks:
 		}
 		// check expected outputs
 		outputs := log.Outputs()
+
 		require.Equal(t, len(kase.outputs), len(outputs), kase.test)
 		for idx := 0; idx < len(outputs); idx++ {
 			assert.Contains(t, outputs[idx], kase.outputs[idx], kase.test)
@@ -549,34 +546,6 @@ func Test_Orkfile_Task_Info_When_Task_DoesNot_Exist(t *testing.T) {
 	assert.Empty(t, f.Info("foo"))
 }
 
-func Test_Orkfile_GlobalEnv_OverridenByLocalEnv_PerTask(t *testing.T) {
-	yml := `
-global:
-  env:
-    - FOO: foo
-tasks:
-  - name: bar
-    env:
-      - FOO: bar
-    actions:
-      - echo $FOO
-  - name: foo
-    actions:
-      - echo $FOO
-`
-	f := New()
-	assert.NoError(t, f.Parse([]byte(yml)))
-	log := NewMockLogger()
-
-	assert.NoError(t, f.Run(context.Background(), "bar", log))
-	assert.NoError(t, f.Run(context.Background(), "foo", log))
-
-	outputs := log.Outputs()
-	require.Equal(t, 2, len(outputs))
-	assert.Equal(t, "bar\n", outputs[0])
-	assert.Equal(t, "foo\n", outputs[1])
-}
-
 func Test_Orkfile_Parse_Fails_When_TwoTasks_Exist_WithTheSameName(t *testing.T) {
 	yml := `
 tasks:
@@ -593,7 +562,7 @@ tasks:
 }
 
 func Test_Orkfile_Parse_On_Malformed_YML(t *testing.T) {
-	invalid_yml := "global: foo"
+	invalid_yml := "invalid yaml contents"
 	assert.Error(t, New().Parse([]byte(invalid_yml)))
 }
 
@@ -678,8 +647,7 @@ func Test_Orkfile_Task_Does_Not_Exist(t *testing.T) {
 
 func Test_Orkfile_RunDefaultTask(t *testing.T) {
 	yml := `
-global:
-  default: foo
+default: foo
 tasks:
   - name: foo
     actions:
