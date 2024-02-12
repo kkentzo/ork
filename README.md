@@ -25,11 +25,11 @@ CI products.
 hierarchy of tasks, with each task having the following optional
 characteristics:
 
+- a sequence of `actions` that are executed independently of each other
+(i.e. in separate processes)
 - a sequence of task dependencies (`depends_on`) that serve as
   prerequisites for the current task
 - a set of task-specific environment variables (`env`)
-- a sequence of `actions` that are executed independently of each other
-(i.e. in separate processes)
 - post-execution hooks (`on_success`, `on_error`)
 
 The execution of any task is preceded by the execution of all the
@@ -38,8 +38,7 @@ tasks in the hierarchy chain in top-down order.
 Here's a simple example:
 
 ```yaml
-global:
-  default: build
+default: build
 
 tasks:
 
@@ -48,7 +47,7 @@ tasks:
     env:
       - GOOS: linux
         GOARCH: amd64
-        GO_TARGET: bin/foo
+      - GO_TARGET: bin/foo
         GO_BUILD: go -ldflags="-s -w"
     actions:
       - $GO_BUILD -o $GO_TARGET
@@ -101,30 +100,6 @@ and `db.rollback`. Note that the parent task (`db`) is still
 considered a task whose environment, actions, hooks etc. will be
 executed before its children (so that the parent task can be used for
 setting up the children tasks).
-
-### Global configuration
-
-As seen above, Orkfiles can also have a global task that will be
-executed before anything else. The global task is useful for things
-like global environment setup, defining the default task, setup common
-dependencies etc. Global environment variables are overriden by local
-(task-specific) ones, e.g.:
-
-```yaml
-global:
-  env:
-    - VAR: bar
-
-  tasks:
-    - name: foo
-      env:
-        - VAR: foo
-      actions:
-        - echo $VAR
-```
-
-In this case, `ork foo` will output `foo` (the task-local version of
-`$VAR`).
 
 ### Environment Variables
 
