@@ -269,6 +269,8 @@ tasks:
     env:
       - A: a
   - name: b
+    depends_on:
+      - a
     require:
       exists:
         - A
@@ -285,6 +287,8 @@ tasks:
     env:
       - A: a
   - name: b
+    depends_on:
+      - a
     require:
       equals:
         A: foo
