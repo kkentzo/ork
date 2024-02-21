@@ -377,7 +377,7 @@ tasks:
 		f := New()
 		require.NoError(t, f.Parse([]byte(kase.yml)), kase.test)
 		// execute task
-		assert.NoError(t, f.Run(context.Background(), kase.task, log), kase.test)
+		assert.NoError(t, f.RunTask(context.Background(), kase.task, log), kase.test)
 
 		for _, ln := range log.Logs(logger.DebugLevel) {
 			fmt.Println(ln)
@@ -415,7 +415,7 @@ tasks:
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
-	assert.ErrorContains(t, f.Run(context.Background(), "foo", log), "cyclic dependency")
+	assert.ErrorContains(t, f.RunTask(context.Background(), "foo", log), "cyclic dependency")
 }
 
 func Test_Orkfile_TaskShouldFail_WhenExistsRequirement_NotPresent(t *testing.T) {
@@ -431,7 +431,7 @@ tasks:
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
-	assert.ErrorContains(t, f.Run(context.Background(), "a", log), "failed requirement")
+	assert.ErrorContains(t, f.RunTask(context.Background(), "a", log), "failed requirement")
 }
 
 func Test_Orkfile_TaskShouldFail_WhenEqualsRequirement_NotPresent(t *testing.T) {
@@ -447,7 +447,7 @@ tasks:
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
-	assert.ErrorContains(t, f.Run(context.Background(), "azfw", log), "expected value but does not exist")
+	assert.ErrorContains(t, f.RunTask(context.Background(), "azfw", log), "expected value but does not exist")
 }
 
 func Test_Orkfile_TaskShouldFail_WhenEqualsRequirement_PresentButNotEqual(t *testing.T) {
@@ -468,7 +468,7 @@ tasks:
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
-	assert.ErrorContains(t, f.Run(context.Background(), "sdw", log), "does not match its expected value")
+	assert.ErrorContains(t, f.RunTask(context.Background(), "sdw", log), "does not match its expected value")
 }
 
 func Test_Orkfile_Dependency_DoesNotExist(t *testing.T) {
@@ -482,7 +482,7 @@ tasks:
 	f := New()
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
-	assert.ErrorContains(t, f.Run(context.Background(), "foo", log), "dependency bar does not exist")
+	assert.ErrorContains(t, f.RunTask(context.Background(), "foo", log), "dependency bar does not exist")
 }
 
 func Test_TaskAction_CanBeCancelled(t *testing.T) {
@@ -501,7 +501,7 @@ tasks:
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go func(o *Orkfile) {
-		o.Run(ctx, "read", log)
+		o.RunTask(ctx, "read", log)
 	}(f)
 
 	var err error
@@ -590,7 +590,7 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
-	assert.NoError(t, f.Run(context.Background(), "env_ordering", log))
+	assert.NoError(t, f.RunTask(context.Background(), "env_ordering", log))
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], target_val)
 }
@@ -611,7 +611,7 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
-	assert.NoError(t, f.Run(context.Background(), "dir", log))
+	assert.NoError(t, f.RunTask(context.Background(), "dir", log))
 	require.Equal(t, 1, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "hello")
 }
@@ -632,7 +632,7 @@ tasks:
 	assert.NoError(t, f.Parse([]byte(yml)))
 	log := NewMockLogger()
 
-	assert.Error(t, f.Run(context.Background(), "foo", log))
+	assert.Error(t, f.RunTask(context.Background(), "foo", log))
 
 	require.Equal(t, 2, len(log.Outputs()))
 	assert.Contains(t, log.Outputs()[0], "failure")
@@ -642,7 +642,7 @@ tasks:
 func Test_Orkfile_Task_Does_Not_Exist(t *testing.T) {
 	f := New()
 	assert.NoError(t, f.Parse([]byte("")))
-	assert.ErrorContains(t, f.Run(context.Background(), "foo", nil), "does not exist")
+	assert.ErrorContains(t, f.RunTask(context.Background(), "foo", nil), "does not exist")
 }
 
 func Test_Orkfile_RunDefaultTask(t *testing.T) {
@@ -768,8 +768,8 @@ tasks:
 	}
 
 	// ok, run the two tasks
-	assert.NoError(t, f.Run(context.Background(), "deploy.production.ping", log))
-	assert.NoError(t, f.Run(context.Background(), "deploy.staging.ping", log))
+	assert.NoError(t, f.RunTask(context.Background(), "deploy.production.ping", log))
+	assert.NoError(t, f.RunTask(context.Background(), "deploy.staging.ping", log))
 
 	// test the command outputs?
 	expected := []string{

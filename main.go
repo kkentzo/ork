@@ -46,16 +46,15 @@ func runApp(ctx context.Context, args []string, logger Logger) error {
 		Description: "workflow management for software projects",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "path",
-				Aliases: []string{"p"},
+				Name:    "file",
+				Aliases: []string{"f", "p"},
 				Usage:   "path to Orkfile",
 				Value:   DEFAULT_ORKFILE,
 			},
 			&cli.StringFlag{
-				Name:    "level",
-				Aliases: []string{"l"},
-				Usage:   "log level (one of 'info', 'error', 'debug')",
-				Value:   LOG_LEVEL_INFO,
+				Name:  "log-level",
+				Usage: "log level (one of 'info', 'error', 'debug')",
+				Value: LOG_LEVEL_INFO,
 			},
 			&cli.StringFlag{
 				Name:    "search",
@@ -63,9 +62,14 @@ func runApp(ctx context.Context, args []string, logger Logger) error {
 				Usage:   "print the ork task labels that contain the supplied regex term",
 			},
 			&cli.BoolFlag{
+				Name:    "list",
+				Aliases: []string{"l"},
+				Usage:   "list all tasks",
+			},
+			&cli.BoolFlag{
 				Name:    "info",
 				Aliases: []string{"i"},
-				Usage:   "show info for the supplied task or all tasks",
+				Usage:   "print information about the provided task",
 			},
 			&cli.BoolFlag{
 				Name:    "version",
@@ -97,14 +101,14 @@ func runApp(ctx context.Context, args []string, logger Logger) error {
 			}
 
 			// set log level for logger
-			if err := logger.SetLogLevel(c.String("level")); err != nil {
+			if err := logger.SetLogLevel(c.String("log-level")); err != nil {
 				return err
 			}
 
 			// read Orkfile contents
-			contents, err := Read(c.String("path"))
+			contents, err := Read(c.String("file"))
 			if err != nil {
-				return fmt.Errorf("failed to find Orkfile in path %s", c.String("path"))
+				return fmt.Errorf("failed to find Orkfile in path %s", c.String("file"))
 			}
 			orkfile := New()
 			if err := orkfile.Parse(contents); err != nil {
@@ -131,29 +135,13 @@ func runApp(ctx context.Context, args []string, logger Logger) error {
 			// read in requested task labels
 			labels := c.Args().Slice()
 
-			// if no tasks are requested, then we
-			// either print info for all tasks
-			// or we execute the default task
-			if len(labels) == 0 {
-				if c.Bool("info") {
-					// get tasks and sort them by name
-					labels := AllLabels(orkfile)
-					for _, label := range labels {
-						logger.Output(orkfile.Info(label) + "\n")
-					}
-				} else {
-					return orkfile.RunDefault(ctx, logger)
-				}
-				return nil
-			}
-
-			// act upon all tasks
-			for _, label := range labels {
-				if c.Bool("info") {
+			if c.Bool("list") {
+				labels := AllLabels(orkfile)
+				for _, label := range labels {
 					logger.Output(orkfile.Info(label) + "\n")
-				} else if err := orkfile.Run(ctx, label, logger); err != nil {
-					return err
 				}
+			} else {
+				return orkfile.Run(ctx, labels, logger)
 			}
 			return nil
 		},

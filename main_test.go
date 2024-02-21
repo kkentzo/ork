@@ -37,13 +37,8 @@ func Test_Ork_Command(t *testing.T) {
 		output      []string
 	}{
 		{
-			"info for single task",
-			[]string{"-i", "foo"},
-			[]string{"[foo] i am foo\n"},
-		},
-		{
 			"list all tasks in lexicographic order",
-			[]string{"-i"},
+			[]string{"-l"},
 			[]string{
 				"[foo] i am foo\n",
 				"[foo.bar] <no description>\n",
@@ -95,7 +90,7 @@ func Test_Ork_Command_Errors(t *testing.T) {
 	}
 	for _, kase := range kases {
 		log := NewMockLogger()
-		kase.args = append([]string{"exe", "-p", orkfile_path}, kase.args...)
+		kase.args = append([]string{"exe", "-f", orkfile_path}, kase.args...)
 		err := runApp(context.Background(), kase.args, log)
 		require.Error(t, err, kase.description)
 		assert.Equal(t, kase.errmsg, err.Error(), kase.description)
@@ -121,7 +116,7 @@ func Test_Ork_Command_LogLevel(t *testing.T) {
 	log := NewMockLogger()
 
 	// let's try an invalid log level
-	args := []string{"exe", "-p", orkfile_path, "-l", "invalid"}
+	args := []string{"exe", "-p", orkfile_path, "--log-level", "invalid"}
 	err := runApp(context.Background(), args, log)
 	assert.ErrorContains(t, err, "unknown log level: invalid")
 
@@ -131,7 +126,7 @@ func Test_Ork_Command_LogLevel(t *testing.T) {
 	assert.Empty(t, log.Logs(logger.DebugLevel))
 
 	// let's try the debug log level
-	args = []string{"exe", "-p", orkfile_path, "-l", "debug", "foo"}
+	args = []string{"exe", "-p", orkfile_path, "--log-level", "debug", "foo"}
 	assert.NoError(t, runApp(context.Background(), args, log))
 	assert.NotEmpty(t, log.Logs(logger.DebugLevel))
 }

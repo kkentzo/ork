@@ -47,8 +47,22 @@ func (f *Orkfile) Parse(contents []byte) error {
 	return f.inventory.Populate(f.Tasks)
 }
 
+func (f *Orkfile) Run(ctx context.Context, labels []string, logger Logger) error {
+	if len(labels) == 0 {
+		return f.RunDefault(ctx, logger)
+	} else {
+		for _, label := range labels {
+			if err := f.RunTask(ctx, label, logger); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
 // run the requested task
-func (f *Orkfile) Run(ctx context.Context, label string, logger Logger) error {
+func (f *Orkfile) RunTask(ctx context.Context, label string, logger Logger) error {
 	task := f.inventory.Find(label)
 	if task == nil {
 		return fmt.Errorf("task %s does not exist", label)
@@ -62,7 +76,7 @@ func (f *Orkfile) RunDefault(ctx context.Context, logger Logger) error {
 	if f.Default == "" {
 		return errors.New("default task has not been set")
 	}
-	return f.WithStdin(f.stdin).Run(ctx, f.Default, logger)
+	return f.WithStdin(f.stdin).RunTask(ctx, f.Default, logger)
 }
 
 // return info for the requested task
